@@ -1,0 +1,106 @@
+// Force DNS resolution order to fix ECONNREFUSED with MongoDB Atlas
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+try {
+    dns.setServers(['8.8.8.8', '8.8.4.4']);
+} catch (e) {
+    console.log("DNS setServers warning:", e.message);
+}
+
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(express.json());
+app.use(cors());
+
+// Import Routes
+const bmiRoutes = require('./routes/bmiroutes');
+const authRoutes = require('./routes/authRoutes');
+const activityRoutes = require('./routes/activityRoutes');
+const notificationRoutes = require('./routes/notifications');
+const pushRoutes = require('./routes/pushRoutes');
+
+// Mount Routes
+app.use('/api/bmi', bmiRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/activities', activityRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/push', pushRoutes);
+
+// Notification Response Handler Route (Updated with Dual Trigger Tracking)
+app.patch('/api/notifications/:id/respond', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: "Access denied. No token provided." });
+        }
+
+        const token = authHeader.split(' ')[1];
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
+        const userId = decoded.userId || decoded.id;
+
+        const { response } = req.body; // 'yes' or 'no'
+        const notificationId = req.params.id;
+
+        const Notification = require('./models/Notification');
+        const Activity = require('./models/Activity');
+
+        const notification = await Notification.findOne({ _id: notificationId, userId });
+        if (!notification) {
+            return res.status(404).json({ error: "Notification not found" });
+        }
+
+        notification.status = response === 'yes' ? 'Completed' : 'Ignored';
+        await notification.save();
+
+        // Handle Water Intake increment if category is Water
+        if (response === 'yes' && notification.category === 'Water') {
+            const todayStr = new Date().toLocaleDateString();
+            await Activity.findOneAndUpdate(
+                { userId, date: todayStr },
+                { $inc: { waterLitres: 0.25 } },
+                { upsert: true, new: true }
+            );
+        }
+
+        // Handle Dual Trigger / Medication Compliance logging
+        if (notification.category === 'Medication' || notification.title?.toLowerCase().includes('trigger')) {
+            const MedicationLog = require('./models/MedicationLog');
+            await MedicationLog.create({
+                userId,
+                title: notification.title || 'Dual Trigger Shot',
+                status: response === 'yes' ? 'Taken' : 'Missed',
+                timestamp: new Date()
+            });
+        }
+
+        res.json({ success: true, message: "Response recorded successfully!", notification });
+    } catch (err) {
+        console.error("Error handling notification response:", err);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+// Base route for testing
+app.get('/', (req, res) => {
+    res.status(200).json({ message: "Health App Backend is running!" });
+});
+
+// MongoDB Atlas Connection
+mongoose.connect(process.env.MONGO_URI)
+.then(() => {
+    console.log("Connected to MongoDB Atlas successfully!");
+    app.listen(PORT, () => {
+        console.log(`Server listening on port ${PORT}`);
+    });
+})
+.catch((err) => {
+    console.error("MongoDB connection error:", err.message);
+});
