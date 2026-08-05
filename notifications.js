@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const Notification = require('../models/notificationModel'); // Adjust path
-const verifyToken = require('../middleware/authMiddleware');
+
+// FIXED IMPORTS: Direct imports from root directory
+const Notification = require('./notificationModel'); 
+const verifyToken = require('./authMiddleware');
 
 // Fetch notifications using the email from the verified JWT token
 router.get('/', verifyToken, async (req, res) => {
