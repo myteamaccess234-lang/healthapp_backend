@@ -9,12 +9,12 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 
-// Import Routes (Exact case matching GitHub repository)
-const bmiRoutes = require('./routes/bmiRoutes');
-const authRoutes = require('./routes/authroutes');
-const activityRoutes = require('./routes/activityroutes');
-const notificationRoutes = require('./routes/notifications');
-const pushRoutes = require('./routes/pushRoutes');
+// Import Routes (Direct imports from root directory as shown in your screenshot)
+const bmiRoutes = require('./bmiroutes');
+const authRoutes = require('./authroutes');
+const activityRoutes = require('./activityroutes');
+const notificationRoutes = require('./notifications');
+const pushRoutes = require('./pushRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -30,7 +30,7 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/push', pushRoutes);
 
-// Health Check Route
+// Base route for health check
 app.get('/', (req, res) => {
     res.status(200).json({ message: "Health App Backend is running!" });
 });
