@@ -1,23 +1,19 @@
 // Force DNS resolution order to fix ECONNREFUSED with MongoDB Atlas
 const dns = require('dns');
-dns.setDefaultResultOrder('ipv4first');
-try {
-    dns.setServers(['8.8.8.8', '8.8.4.4']);
-} catch (e) {
-    console.log("DNS setServers warning:", e.message);
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
 }
 
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Middleware
-app.use(express.json());
-app.use(cors());
+// Import Models
+const Notification = require('./models/Notification');
+const Activity = require('./models/Activity');
+const MedicationLog = require('./models/MedicationLog');
 
 // Import Routes
 const bmiRoutes = require('./routes/bmiRoutes');
@@ -26,6 +22,13 @@ const activityRoutes = require('./routes/activityRoutes');
 const notificationRoutes = require('./routes/notifications');
 const pushRoutes = require('./routes/pushRoutes');
 
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(express.json());
+app.use(cors());
+
 // Mount Routes
 app.use('/api/bmi', bmiRoutes);
 app.use('/api/auth', authRoutes);
@@ -33,7 +36,12 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/push', pushRoutes);
 
-// Notification Response Handler Route (Updated with Dual Trigger Tracking)
+// Base route for health check
+app.get('/', (req, res) => {
+    res.status(200).json({ message: "Health App Backend is running!" });
+});
+
+// Notification Response Handler Route (Dual Trigger Tracking)
 app.patch('/api/notifications/:id/respond', async (req, res) => {
     try {
         const authHeader = req.headers.authorization;
@@ -42,15 +50,11 @@ app.patch('/api/notifications/:id/respond', async (req, res) => {
         }
 
         const token = authHeader.split(' ')[1];
-        const jwt = require('jsonwebtoken');
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
         const userId = decoded.userId || decoded.id;
 
         const { response } = req.body; // 'yes' or 'no'
         const notificationId = req.params.id;
-
-        const Notification = require('./models/Notification');
-        const Activity = require('./models/Activity');
 
         const notification = await Notification.findOne({ _id: notificationId, userId });
         if (!notification) {
@@ -72,7 +76,6 @@ app.patch('/api/notifications/:id/respond', async (req, res) => {
 
         // Handle Dual Trigger / Medication Compliance logging
         if (notification.category === 'Medication' || notification.title?.toLowerCase().includes('trigger')) {
-            const MedicationLog = require('./models/MedicationLog');
             await MedicationLog.create({
                 userId,
                 title: notification.title || 'Dual Trigger Shot',
@@ -88,19 +91,14 @@ app.patch('/api/notifications/:id/respond', async (req, res) => {
     }
 });
 
-// Base route for testing
-app.get('/', (req, res) => {
-    res.status(200).json({ message: "Health App Backend is running!" });
-});
-
-// MongoDB Atlas Connection
+// MongoDB Atlas Connection & Server Startup
 mongoose.connect(process.env.MONGO_URI)
-.then(() => {
-    console.log("Connected to MongoDB Atlas successfully!");
-    app.listen(PORT, () => {
-        console.log(`Server listening on port ${PORT}`);
+    .then(() => {
+        console.log("Connected to MongoDB Atlas successfully!");
+        app.listen(PORT, () => {
+            console.log(`Server listening on port ${PORT}`);
+        });
+    })
+    .catch((err) => {
+        console.error("MongoDB connection error:", err.message);
     });
-})
-.catch((err) => {
-    console.error("MongoDB connection error:", err.message);
-});
