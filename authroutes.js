@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/usermodel');
+
+// FIXED IMPORT: Changed '../models/usermodel' to './usermodel'
+const User = require('./usermodel');
+
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
@@ -47,8 +50,8 @@ router.post('/send-otp', async (req, res) => {
 
         res.status(200).json({ success: true, message: "OTP sent successfully to your email." });
     } catch (err) {
-        console.error("FULL SEND-OTP ERROR STACK:", err); // <-- Prints exact error in terminal
-        res.status(500).json({ success: false, message: err.message }); // <-- Sends error details to frontend
+        console.error("FULL SEND-OTP ERROR STACK:", err);
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 
