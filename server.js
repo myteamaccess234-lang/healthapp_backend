@@ -9,8 +9,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 
-// Import Routes (Matches your exact GitHub file names)
-const bmiRoutes = require('./routes/bmiroutes');
+// Import Routes (Exact case matching GitHub repository)
+const bmiRoutes = require('./routes/bmiRoutes');
 const authRoutes = require('./routes/authroutes');
 const activityRoutes = require('./routes/activityroutes');
 const notificationRoutes = require('./routes/notifications');
