@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const BmiRecord = require('../models/bmimodel'); // Adjust path to your model
-const verifyToken = require('../middleware/authMiddleware'); // Your auth middleware
+
+// Fixed imports: changed '../models/bmimodel' and '../middleware/authMiddleware' to direct root imports
+const BmiRecord = require('./bmimodel'); 
+const verifyToken = require('./authMiddleware'); 
 
 // Save BMI Record
 router.post('/save', verifyToken, async (req, res) => {
