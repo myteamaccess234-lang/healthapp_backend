@@ -10,16 +10,14 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 
-// Import Models
-// NOTE: Change these filenames if yours in GitHub 'models/' folder use a different case/name!
-const Notification = require('./models/notification'); 
-const Activity = require('./models/activity'); 
-const MedicationLog = require('./models/medicationLog'); 
+// Import Models (matching your exact filenames)
+const Notification = require('./models/notificationModel'); 
+const Activity = require('./models/activityModel'); 
 
-// Import Routes
-const bmiRoutes = require('./routes/bmiRoutes');
-const authRoutes = require('./routes/authRoutes');
-const activityRoutes = require('./routes/activityRoutes');
+// Import Routes (matching your exact filenames)
+const bmiRoutes = require('./routes/bmiroutes');
+const authRoutes = require('./routes/authroutes');
+const activityRoutes = require('./routes/activityroutes');
 const notificationRoutes = require('./routes/notifications');
 const pushRoutes = require('./routes/pushRoutes');
 
@@ -42,7 +40,7 @@ app.get('/', (req, res) => {
     res.status(200).json({ message: "Health App Backend is running!" });
 });
 
-// Notification Response Handler Route (Dual Trigger Tracking)
+// Notification Response Handler Route
 app.patch('/api/notifications/:id/respond', async (req, res) => {
     try {
         const authHeader = req.headers.authorization;
@@ -73,16 +71,6 @@ app.patch('/api/notifications/:id/respond', async (req, res) => {
                 { $inc: { waterLitres: 0.25 } },
                 { upsert: true, new: true }
             );
-        }
-
-        // Handle Dual Trigger / Medication Compliance logging
-        if (notification.category === 'Medication' || notification.title?.toLowerCase().includes('trigger')) {
-            await MedicationLog.create({
-                userId,
-                title: notification.title || 'Dual Trigger Shot',
-                status: response === 'yes' ? 'Taken' : 'Missed',
-                timestamp: new Date()
-            });
         }
 
         res.json({ success: true, message: "Response recorded successfully!", notification });
