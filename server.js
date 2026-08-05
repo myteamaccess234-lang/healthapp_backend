@@ -11,9 +11,10 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 
 // Import Models
-const Notification = require('./models/Notification');
-const Activity = require('./models/Activity');
-const MedicationLog = require('./models/MedicationLog');
+// NOTE: Change these filenames if yours in GitHub 'models/' folder use a different case/name!
+const Notification = require('./models/notification'); 
+const Activity = require('./models/activity'); 
+const MedicationLog = require('./models/medicationLog'); 
 
 // Import Routes
 const bmiRoutes = require('./routes/bmiRoutes');
