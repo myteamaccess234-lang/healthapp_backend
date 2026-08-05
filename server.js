@@ -20,7 +20,7 @@ app.use(express.json());
 app.use(cors());
 
 // Import Routes
-const bmiRoutes = require('./routes/bmiroutes');
+const bmiRoutes = require('./routes/bmiRoutes');
 const authRoutes = require('./routes/authRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const notificationRoutes = require('./routes/notifications');
