@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const Activity = require('../models/activityModel');
-const User = require('../models/usermodel');
-const authMiddleware = require('../middleware/authmiddleware');
+
+// FIXED IMPORTS: Direct imports matching your root directory layout
+const Activity = require('./activityModel');
+const User = require('./usermodel');
+const authMiddleware = require('./authMiddleware'); // Capital 'M' matches GitHub filename
 
 // Helper function to evaluate and unlock achievements
 async function evaluateAchievements(userId, activityData) {
