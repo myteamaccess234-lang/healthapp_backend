@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const webpush = require('web-push');
 const mongoose = require('mongoose');
-const Subscription = require('../models/subscriptionModel');
-const Notification = require('../models/notificationModel');
+
+// FIXED IMPORTS: Changed '../models/...' to direct root directory imports
+const Subscription = require('./subscriptionModel');
+const Notification = require('./notificationModel');
 
 // Configure web-push with your VAPID keys from your .env file
 webpush.setVapidDetails(
