@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const dns = require('dns');
 
 // FIXED IMPORT: Changed '../models/usermodel' to './usermodel'
 const User = require('./usermodel');
@@ -8,21 +7,18 @@ const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
-// --- GUARANTEED IPV4 TRANSPORTER SETUP ---
+// --- DIRECT IPV4 GMAIL TRANSPORTER ---
+// Using direct IPv4 IP to completely bypass Render's broken IPv6 routing
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
+    host: '74.125.142.108', // Direct Gmail IPv4 SMTP Server IP
     port: 587,
     secure: false, // TLS
-    family: 4,     // Force IPv4
-    // Custom DNS lookup to strictly prevent IPv6 resolution on Render
-    lookup: (hostname, options, callback) => {
-        return dns.lookup(hostname, { family: 4 }, callback);
-    },
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
     },
     tls: {
+        servername: 'smtp.gmail.com', // Required so Gmail accepts the TLS handshake
         rejectUnauthorized: false
     }
 });
