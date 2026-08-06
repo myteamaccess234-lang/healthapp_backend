@@ -1200,10 +1200,7 @@ table th {
 
 <script>
 /* DYNAMIC CONFIG FOR API ENDPOINTS */
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:5000'
-    : 'https://healthapp-backend-1.onrender.com';
-
+const API_BASE_URL = 'https://healthapp-backend-1.onrender.com';
 /* GLOBAL STATE MANAGEMENT */
 let userState = {
     name: localStorage.getItem("userName") || "",
