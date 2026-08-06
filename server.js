@@ -1,4 +1,4 @@
-// Force DNS resolution order to fix ECONNREFUSED with MongoDB Atlas & Render IPv6 blocks
+// Force DNS resolution order to fix ECONNREFUSED with MongoDB Atlas
 const dns = require('dns');
 if (dns.setDefaultResultOrder) {
     dns.setDefaultResultOrder('ipv4first');
