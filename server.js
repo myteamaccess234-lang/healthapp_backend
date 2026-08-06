@@ -34,6 +34,11 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/push', pushRoutes);
 
+// Route for Service Worker
+app.get('/sw.js', (req, res) => {
+    res.sendFile(path.join(__dirname, 'sw.js'));
+});
+
 // Base route - serves notes.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'notes.html'));
