@@ -7,12 +7,18 @@ const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
-// Configure Nodemailer transporter using .env variables
+// --- UPDATED TRANSPORTER SETUP ---
+// Using host and port 587 instead of service: 'gmail' to avoid Render IPv6/465 blocks
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // Set to false for port 587
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
+    },
+    tls: {
+        rejectUnauthorized: false
     }
 });
 
