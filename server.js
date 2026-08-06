@@ -1,4 +1,4 @@
-// Force DNS resolution order to fix ECONNREFUSED with MongoDB Atlas
+// Force DNS resolution order to fix ECONNREFUSED with MongoDB Atlas & Render IPv6 blocks
 const dns = require('dns');
 if (dns.setDefaultResultOrder) {
     dns.setDefaultResultOrder('ipv4first');
@@ -8,7 +8,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path'); // Added path module
+const path = require('path');
 
 // Import Routes
 const bmiRoutes = require('./bmiroutes');
@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cors());
 
-// Serve static files (HTML, images, SW) directly from root
+// Serve static files directly from root
 app.use(express.static(__dirname));
 
 // Mount Routes
@@ -34,7 +34,7 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/push', pushRoutes);
 
-// Base route - serves notes.html instead of raw JSON
+// Base route - serves notes.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'notes.html'));
 });
