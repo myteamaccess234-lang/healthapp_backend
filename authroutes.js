@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const dns = require('dns');
 
 // FIXED IMPORT: Changed '../models/usermodel' to './usermodel'
 const User = require('./usermodel');
@@ -7,12 +8,16 @@ const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
-// --- UPDATED TRANSPORTER SETUP ---
-// Using host and port 587 instead of service: 'gmail' to avoid Render IPv6/465 blocks
+// --- GUARANTEED IPV4 TRANSPORTER SETUP ---
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
-    secure: false, // Set to false for port 587
+    secure: false, // TLS
+    family: 4,     // Force IPv4
+    // Custom DNS lookup to strictly prevent IPv6 resolution on Render
+    lookup: (hostname, options, callback) => {
+        return dns.lookup(hostname, { family: 4 }, callback);
+    },
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
