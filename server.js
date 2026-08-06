@@ -8,8 +8,9 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path'); // Added path module
 
-// Import Routes (Direct imports from root directory as shown in your screenshot)
+// Import Routes
 const bmiRoutes = require('./bmiroutes');
 const authRoutes = require('./authroutes');
 const activityRoutes = require('./activityroutes');
@@ -23,6 +24,9 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cors());
 
+// Serve static files (HTML, images, SW) directly from root
+app.use(express.static(__dirname));
+
 // Mount Routes
 app.use('/api/bmi', bmiRoutes);
 app.use('/api/auth', authRoutes);
@@ -30,9 +34,9 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/push', pushRoutes);
 
-// Base route for health check
+// Base route - serves notes.html instead of raw JSON
 app.get('/', (req, res) => {
-    res.status(200).json({ message: "Health App Backend is running!" });
+    res.sendFile(path.join(__dirname, 'notes.html'));
 });
 
 // MongoDB Atlas Connection & Server Startup
