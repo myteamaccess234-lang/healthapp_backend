@@ -1,27 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const { Resend } = require('resend');
 
-// FIXED IMPORT: Changed '../models/usermodel' to './usermodel'
+// Initialize Resend with your API Key from Render Environment Variables
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 const User = require('./usermodel');
-
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
-
-// --- DIRECT IPV4 GMAIL TRANSPORTER ---
-// Using direct IPv4 IP to completely bypass Render's broken IPv6 routing
-const transporter = nodemailer.createTransport({
-    host: '74.125.142.108', // Direct Gmail IPv4 SMTP Server IP
-    port: 587,
-    secure: false, // TLS
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    },
-    tls: {
-        servername: 'smtp.gmail.com', // Required so Gmail accepts the TLS handshake
-        rejectUnauthorized: false
-    }
-});
 
 // 1. Route to Send OTP
 router.post('/send-otp', async (req, res) => {
@@ -31,11 +16,11 @@ router.post('/send-otp', async (req, res) => {
             return res.status(400).json({ success: false, message: "Email is required" });
         }
 
-        // Generate a 6-digit random OTP
+        // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // Expires in 10 minutes
 
-        // Find user or create a new document if it doesn't exist
+        // Find user or create a new document
         let user = await User.findOne({ email });
         if (!user) {
             user = new User({ email, otp, otpExpiry });
@@ -45,15 +30,13 @@ router.post('/send-otp', async (req, res) => {
         }
         await user.save();
 
-        // Send email with OTP
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
+        // Send Email via Resend API (HTTPS on Port 443 - strictly bypasses Render timeouts)
+        await resend.emails.send({
+            from: 'HealthApp <onboarding@resend.dev>', // Free testing domain from Resend
             to: email,
             subject: 'Your Health App Login OTP',
-            text: `Your OTP for login is: ${otp}. It is valid for 10 minutes.`
-        };
-
-        await transporter.sendMail(mailOptions);
+            html: `<p>Your OTP for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
+        });
 
         res.status(200).json({ success: true, message: "OTP sent successfully to your email." });
     } catch (err) {
