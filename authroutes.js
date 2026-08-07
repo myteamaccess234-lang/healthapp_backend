@@ -1,26 +1,36 @@
 const express = require('express');
 const router = express.Router();
 const nodemailer = require('nodemailer');
-const dns = require('dns');
+const dns = require('dns').promises;
 const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
 
-// Explicitly set Node.js default DNS resolution order to IPv4 first
-dns.setDefaultResultOrder('ipv4first');
+// Helper to get Gmail's direct IPv4 address
+async function getGmailIPv4Transporter() {
+    let resolvedIp = '74.125.130.108'; // Default Google SMTP IPv4 fallback
+    try {
+        const addresses = await dns.resolve4('smtp.gmail.com');
+        if (addresses && addresses.length > 0) {
+            resolvedIp = addresses[0]; // Pick first clean IPv4 address
+        }
+    } catch (err) {
+        console.log('DNS lookup fallback to static IPv4');
+    }
 
-// Configure Nodemailer
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // SSL
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000
-});
+    return nodemailer.createTransport({
+        host: resolvedIp,
+        port: 465,
+        secure: true, // SSL
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        },
+        tls: {
+            servername: 'smtp.gmail.com' // Required for SSL certificate verification
+        },
+        connectionTimeout: 10000
+    });
+}
 
 // 1. Route to Send OTP
 router.post('/send-otp', async (req, res) => {
@@ -53,6 +63,8 @@ router.post('/send-otp', async (req, res) => {
             html: `<p>Your OTP code for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
         };
 
+        // Create IPv4 transporter directly
+        const transporter = await getGmailIPv4Transporter();
         await transporter.sendMail(mailOptions);
         console.log(`>>> SUCCESS: OTP Email delivered to ${email} <<<`);
 
