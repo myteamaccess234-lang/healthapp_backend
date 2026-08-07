@@ -1,12 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { Resend } = require('resend');
-
-// Initialize Resend with your API Key from Render Environment Variables
-const resend = new Resend(process.env.RESEND_API_KEY);
-
+const nodemailer = require('nodemailer');
 const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
+
+// Configure Nodemailer with Gmail SMTP
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER, // Your Gmail address from Render Environment
+        pass: process.env.EMAIL_PASS  // Your 16-character App Password from Render Environment
+    }
+});
 
 // 1. Route to Send OTP
 router.post('/send-otp', async (req, res) => {
@@ -18,7 +23,7 @@ router.post('/send-otp', async (req, res) => {
 
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // Expires in 10 minutes
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // Valid for 10 minutes
 
         // Find user or create a new document
         let user = await User.findOne({ email });
@@ -30,9 +35,9 @@ router.post('/send-otp', async (req, res) => {
         }
         await user.save();
 
-        // Send Email via Resend API (HTTPS on Port 443 - strictly bypasses Render timeouts)
-        await resend.emails.send({
-            from: 'HealthApp <onboarding@resend.dev>', // Free testing domain from Resend
+        // Send Email via Gmail Nodemailer
+        await transporter.sendMail({
+            from: `"Health App" <${process.env.EMAIL_USER}>`,
             to: email,
             subject: 'Your Health App Login OTP',
             html: `<p>Your OTP for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
