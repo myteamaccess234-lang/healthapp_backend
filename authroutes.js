@@ -1,11 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
 
-// Initialize Resend HTTPS API (No Nodemailer, No Port 587, No IPv6 Errors)
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Configure Nodemailer using Gmail SMTP Port 465 (SSL)
+const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // SSL bypasses Render port 587 blocks
+    auth: {
+        user: process.env.EMAIL_USER, // Your new dedicated Gmail
+        pass: process.env.EMAIL_PASS  // The 16-character App Password
+    }
+});
 
 // 1. Route to Send OTP
 router.post('/send-otp', async (req, res) => {
@@ -29,23 +37,20 @@ router.post('/send-otp', async (req, res) => {
         }
         await user.save();
 
-        // PRINT OTP TO RENDER CONSOLE (For instant testing!)
+        // Print OTP to Render console for easy debugging
         console.log(`==========================================`);
         console.log(`>>> OTP FOR ${email}: [ ${otp} ] <<<`);
         console.log(`==========================================`);
 
-        // Send Email via Resend HTTPS API (Destructure data and error properly)
-        const { data, error } = await resend.emails.send({
-            from: 'Health App <onboarding@resend.dev>',
-            to: [email],
+        // Send Email to ANY user's Gmail inbox
+        const mailOptions = {
+            from: `Health App <${process.env.EMAIL_USER}>`,
+            to: email,
             subject: 'Your Health App Login OTP',
-            html: `<p>Your OTP for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
-        });
+            html: `<p>Your OTP code for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
+        };
 
-        if (error) {
-            console.error("Resend API Error:", error);
-            return res.status(500).json({ success: false, message: error.message });
-        }
+        await transporter.sendMail(mailOptions);
 
         res.status(200).json({ success: true, message: "OTP sent successfully." });
     } catch (err) {
