@@ -4,12 +4,18 @@ const nodemailer = require('nodemailer');
 const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
 
-// Configure Nodemailer with Gmail SMTP
+// Configure Nodemailer with Gmail SMTP (Forced IPv4 to prevent Render ENETUNREACH errors)
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // Uses STARTTLS
+    family: 4,     // Forces IPv4 connection (Render free tier doesn't support outbound IPv6)
     auth: {
         user: process.env.EMAIL_USER, // Your Gmail address from Render Environment
         pass: process.env.EMAIL_PASS  // Your 16-character App Password from Render Environment
+    },
+    tls: {
+        rejectUnauthorized: false
     }
 });
 
