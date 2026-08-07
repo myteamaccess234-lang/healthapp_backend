@@ -1,34 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const nodemailer = require('nodemailer');
-const dns = require('dns').promises;
 const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
 
-// Helper to get Gmail's direct IPv4 address
-async function getGmailIPv4Transporter() {
-    let resolvedIp = '74.125.130.108'; // Default Google SMTP IPv4 fallback
-    try {
-        const addresses = await dns.resolve4('smtp.gmail.com');
-        if (addresses && addresses.length > 0) {
-            resolvedIp = addresses[0]; // Pick first clean IPv4 address
-        }
-    } catch (err) {
-        console.log('DNS lookup fallback to static IPv4');
-    }
-
+// Create OAuth2 Transporter (Uses HTTPS on Port 443 — works seamlessly on Render)
+function createOAuth2Transporter() {
     return nodemailer.createTransport({
-        host: resolvedIp,
-        port: 465,
-        secure: true, // SSL
+        service: 'gmail',
         auth: {
+            type: 'OAuth2',
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
+            clientId: process.env.GMAIL_CLIENT_ID,
+            clientSecret: process.env.GMAIL_CLIENT_SECRET,
+            refreshToken: process.env.GMAIL_REFRESH_TOKEN,
         },
-        tls: {
-            servername: 'smtp.gmail.com' // Required for SSL certificate verification
-        },
-        connectionTimeout: 10000
     });
 }
 
@@ -63,8 +49,7 @@ router.post('/send-otp', async (req, res) => {
             html: `<p>Your OTP code for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
         };
 
-        // Create IPv4 transporter directly
-        const transporter = await getGmailIPv4Transporter();
+        const transporter = createOAuth2Transporter();
         await transporter.sendMail(mailOptions);
         console.log(`>>> SUCCESS: OTP Email delivered to ${email} <<<`);
 
