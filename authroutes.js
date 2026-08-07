@@ -1,23 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
 
-// Configure Nodemailer with Gmail SMTP (Forced IPv4 to prevent Render ENETUNREACH errors)
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // Uses STARTTLS
-    family: 4,     // Forces IPv4 connection (Render free tier doesn't support outbound IPv6)
-    auth: {
-        user: process.env.EMAIL_USER, // Your Gmail address from Render Environment
-        pass: process.env.EMAIL_PASS  // Your 16-character App Password from Render Environment
-    },
-    tls: {
-        rejectUnauthorized: false
-    }
-});
+// Initialize Resend HTTPS API (No Nodemailer, No Port 587, No IPv6 Errors)
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // 1. Route to Send OTP
 router.post('/send-otp', async (req, res) => {
@@ -29,9 +17,9 @@ router.post('/send-otp', async (req, res) => {
 
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // Valid for 10 minutes
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
-        // Find user or create a new document
+        // Save to Database
         let user = await User.findOne({ email });
         if (!user) {
             user = new User({ email, otp, otpExpiry });
@@ -41,22 +29,32 @@ router.post('/send-otp', async (req, res) => {
         }
         await user.save();
 
-        // Send Email via Gmail Nodemailer
-        await transporter.sendMail({
-            from: `"Health App" <${process.env.EMAIL_USER}>`,
-            to: email,
+        // PRINT OTP TO RENDER CONSOLE (For instant testing!)
+        console.log(`==========================================`);
+        console.log(`>>> OTP FOR ${email}: [ ${otp} ] <<<`);
+        console.log(`==========================================`);
+
+        // Send Email via Resend HTTPS API
+        const data = await resend.emails.send({
+            from: 'Health App <onboarding@resend.dev>',
+            to: [email],
             subject: 'Your Health App Login OTP',
             html: `<p>Your OTP for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
         });
 
-        res.status(200).json({ success: true, message: "OTP sent successfully to your email." });
+        if (data.error) {
+            console.error("Resend API Error:", data.error);
+            return res.status(500).json({ success: false, message: data.error.message });
+        }
+
+        res.status(200).json({ success: true, message: "OTP sent successfully." });
     } catch (err) {
         console.error("FULL SEND-OTP ERROR STACK:", err);
         res.status(500).json({ success: false, message: err.message });
     }
 });
 
-// 2. Route to Verify OTP and Issue JWT Token
+// 2. Route to Verify OTP
 router.post('/verify-otp', async (req, res) => {
     try {
         const { email, otp } = req.body;
@@ -69,12 +67,10 @@ router.post('/verify-otp', async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
         }
 
-        // Clear OTP fields after successful verification
         user.otp = null;
         user.otpExpiry = null;
         await user.save();
 
-        // Create JWT token containing user id and email
         const token = jwt.sign(
             { id: user._id, email: user.email },
             process.env.JWT_SECRET,
