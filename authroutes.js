@@ -1,15 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const nodemailer = require('nodemailer');
+const dns = require('dns');
 const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
 
-// Configure Nodemailer explicitly forcing IPv4 family
+// Explicitly set Node.js default DNS resolution order to IPv4 first
+dns.setDefaultResultOrder('ipv4first');
+
+// Configure Nodemailer
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
-    secure: true,
-    family: 4, // Prevents ENETUNREACH IPv6 routing errors on Render
+    secure: true, // SSL
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
@@ -50,7 +53,6 @@ router.post('/send-otp', async (req, res) => {
             html: `<p>Your OTP code for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
         };
 
-        // Send mail via IPv4 Nodemailer transport
         await transporter.sendMail(mailOptions);
         console.log(`>>> SUCCESS: OTP Email delivered to ${email} <<<`);
 
