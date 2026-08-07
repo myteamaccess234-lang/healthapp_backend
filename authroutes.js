@@ -4,15 +4,16 @@ const nodemailer = require('nodemailer');
 const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
 
-// Configure Nodemailer using Gmail SMTP Port 465 (SSL)
+// Configure Nodemailer with connection timeouts
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // SSL bypasses Render port 587 blocks
+    service: 'gmail',
     auth: {
-        user: process.env.EMAIL_USER, // Your new dedicated Gmail
-        pass: process.env.EMAIL_PASS  // The 16-character App Password
-    }
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    },
+    connectionTimeout: 5000, // 5 seconds timeout so it never hangs indefinitely
+    greetingTimeout: 5000,
+    socketTimeout: 5000
 });
 
 // 1. Route to Send OTP
@@ -23,11 +24,9 @@ router.post('/send-otp', async (req, res) => {
             return res.status(400).json({ success: false, message: "Email is required" });
         }
 
-        // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
-        // Save to Database
         let user = await User.findOne({ email });
         if (!user) {
             user = new User({ email, otp, otpExpiry });
@@ -37,12 +36,10 @@ router.post('/send-otp', async (req, res) => {
         }
         await user.save();
 
-        // Print OTP to Render console for easy debugging
         console.log(`==========================================`);
         console.log(`>>> OTP FOR ${email}: [ ${otp} ] <<<`);
         console.log(`==========================================`);
 
-        // Send Email to ANY user's Gmail inbox
         const mailOptions = {
             from: `Health App <${process.env.EMAIL_USER}>`,
             to: email,
@@ -50,12 +47,17 @@ router.post('/send-otp', async (req, res) => {
             html: `<p>Your OTP code for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
         };
 
+        // Send mail with error catching
         await transporter.sendMail(mailOptions);
 
-        res.status(200).json({ success: true, message: "OTP sent successfully." });
+        return res.status(200).json({ success: true, message: "OTP sent successfully." });
+
     } catch (err) {
-        console.error("FULL SEND-OTP ERROR STACK:", err);
-        res.status(500).json({ success: false, message: err.message });
+        console.error("SEND-OTP FAILED:", err.message);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to send email via SMTP. Check Render logs or Gmail App Password." 
+        });
     }
 });
 
