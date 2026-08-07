@@ -20,9 +20,18 @@ const pushRoutes = require('./pushRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// 1. Trust proxy headers (Required on Render so cookies/protocol pass correctly to WebViews)
+app.enable('trust proxy');
+
 // Middleware
 app.use(express.json());
-app.use(cors());
+
+// 2. Explicit CORS configuration for Mobile WebViews & Web Browsers
+app.use(cors({
+    origin: '*', 
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 
 // Serve static files directly from root
 app.use(express.static(__dirname));
