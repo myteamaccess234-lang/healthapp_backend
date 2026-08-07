@@ -34,17 +34,17 @@ router.post('/send-otp', async (req, res) => {
         console.log(`>>> OTP FOR ${email}: [ ${otp} ] <<<`);
         console.log(`==========================================`);
 
-        // Send Email via Resend HTTPS API
-        const data = await resend.emails.send({
+        // Send Email via Resend HTTPS API (Destructure data and error properly)
+        const { data, error } = await resend.emails.send({
             from: 'Health App <onboarding@resend.dev>',
             to: [email],
             subject: 'Your Health App Login OTP',
             html: `<p>Your OTP for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
         });
 
-        if (data.error) {
-            console.error("Resend API Error:", data.error);
-            return res.status(500).json({ success: false, message: data.error.message });
+        if (error) {
+            console.error("Resend API Error:", error);
+            return res.status(500).json({ success: false, message: error.message });
         }
 
         res.status(200).json({ success: true, message: "OTP sent successfully." });
