@@ -1,11 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const nodemailer = require('nodemailer');
-const dns = require('dns'); // <--- Import native DNS
+const dns = require('dns');
 const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
 
-// Create OAuth2 Transporter with strict IPv4 lookup
+// Custom DNS lookup function that ONLY returns IPv4 addresses
+const lookupIPv4 = (hostname, options, callback) => {
+    return dns.lookup(hostname, { family: 4 }, callback);
+};
+
+// Create OAuth2 Transporter with strictly forced IPv4 lookup
 function createOAuth2Transporter() {
     return nodemailer.createTransport({
         host: 'smtp.gmail.com',
@@ -18,8 +23,8 @@ function createOAuth2Transporter() {
             clientSecret: process.env.GMAIL_CLIENT_SECRET,
             refreshToken: process.env.GMAIL_REFRESH_TOKEN,
         },
-        family: 4,               // Force IPv4
-        lookup: dns.lookup       // Use Node's global IPv4-first DNS resolver
+        family: 4,             // Force IPv4
+        lookup: lookupIPv4    // Custom lookup that blocks IPv6 entirely
     });
 }
 
@@ -88,7 +93,7 @@ router.post('/verify-otp', async (req, res) => {
 
         const token = jwt.sign(
             { id: user._id, email: user.email },
-            process.env.JWT_SECRET,
+            process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '7d' }
         );
 
