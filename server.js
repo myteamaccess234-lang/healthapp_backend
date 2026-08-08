@@ -1,71 +1,108 @@
-// Force DNS resolution order to fix ECONNREFUSED with MongoDB Atlas
-const dns = require('dns');
-if (dns.setDefaultResultOrder) {
-    dns.setDefaultResultOrder('ipv4first');
+const express = require('express');
+const router = express.Router();
+const nodemailer = require('nodemailer');
+const dns = require('dns'); // <--- Import native DNS
+const User = require('./usermodel');
+const jwt = require('jsonwebtoken');
+
+// Create OAuth2 Transporter with strict IPv4 lookup
+function createOAuth2Transporter() {
+    return nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: {
+            type: 'OAuth2',
+            user: process.env.EMAIL_USER,
+            clientId: process.env.GMAIL_CLIENT_ID,
+            clientSecret: process.env.GMAIL_CLIENT_SECRET,
+            refreshToken: process.env.GMAIL_REFRESH_TOKEN,
+        },
+        family: 4,               // Force IPv4
+        lookup: dns.lookup       // Use Node's global IPv4-first DNS resolver
+    });
 }
 
-require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const path = require('path');
+// 1. Route to Send OTP
+router.post('/send-otp', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ success: false, message: "Email is required" });
+        }
 
-// Import Routes
-const bmiRoutes = require('./bmiroutes');
-const authRoutes = require('./authroutes');
-const activityRoutes = require('./activityroutes');
-const notificationRoutes = require('./notifications');
-const pushRoutes = require('./pushRoutes');
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
-const app = express();
-const PORT = process.env.PORT || 5000;
+        let user = await User.findOne({ email });
+        if (!user) {
+            user = new User({ email, otp, otpExpiry });
+        } else {
+            user.otp = otp;
+            user.otpExpiry = otpExpiry;
+        }
+        await user.save();
 
-// 1. Trust proxy headers (Required on Render so cookies/protocol pass correctly to WebViews)
-app.enable('trust proxy');
+        console.log(`==========================================`);
+        console.log(`>>> OTP FOR ${email}: [ ${otp} ] <<<`);
+        console.log(`==========================================`);
 
-// Middleware
-app.use(express.json());
+        const mailOptions = {
+            from: `Health App <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: 'Your Health App Login OTP',
+            html: `<p>Your OTP code for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
+        };
 
-// 2. Explicit CORS configuration for Mobile WebViews & Web Browsers
-app.use(cors({
-    origin: '*', 
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+        const transporter = createOAuth2Transporter();
+        await transporter.sendMail(mailOptions);
+        console.log(`>>> SUCCESS: OTP Email delivered to ${email} <<<`);
 
-// Serve static files directly from root
-app.use(express.static(__dirname));
+        return res.status(200).json({ success: true, message: "OTP sent successfully." });
 
-// Mount Routes
-app.use('/api/bmi', bmiRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/activities', activityRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/push', pushRoutes);
-
-// Route for Service Worker
-app.get('/sw.js', (req, res) => {
-    res.sendFile(path.join(__dirname, 'sw.js'));
-});
-
-// Lightweight health check route for cron-job.org
-app.get('/health', (req, res) => {
-    res.status(200).send('OK');
-});
-
-// Base route - serves notes.html
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'notes.html'));
-});
-
-// MongoDB Atlas Connection & Server Startup
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
-        console.log("Connected to MongoDB Atlas successfully!");
-        app.listen(PORT, () => {
-            console.log(`Server listening on port ${PORT}`);
+    } catch (err) {
+        console.error("SEND-OTP FAILED:", err.message);
+        return res.status(500).json({ 
+            success: false, 
+            message: `Email sending failed: ${err.message}` 
         });
-    })
-    .catch((err) => {
-        console.error("MongoDB connection error:", err.message);
-    });
+    }
+});
+
+// 2. Route to Verify OTP
+router.post('/verify-otp', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        if (!email || !otp) {
+            return res.status(400).json({ success: false, message: "Email and OTP are required" });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user || user.otp !== otp || user.otpExpiry < new Date()) {
+            return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
+        }
+
+        user.otp = null;
+        user.otpExpiry = null;
+        await user.save();
+
+        const token = jwt.sign(
+            { id: user._id, email: user.email },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Login successful",
+            token,
+            email: user.email,
+            user: { id: user._id, email: user.email }
+        });
+    } catch (err) {
+        console.error("Verify OTP error:", err);
+        res.status(500).json({ success: false, message: "Server error during verification." });
+    }
+});
+
+module.exports = router;
