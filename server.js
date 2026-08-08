@@ -1,9 +1,16 @@
 const express = require('express');
-const router = express.Router();
+const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 const dns = require('dns');
-const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
+
+const User = require('./usermodel'); // Ensure usermodel.js exists in the same directory
+
+const app = express();
+
+// Middleware to parse incoming JSON requests
+app.use(express.json());
 
 // Custom DNS lookup function that ONLY returns IPv4 addresses
 const lookupIPv4 = (hostname, options, callback) => {
@@ -28,8 +35,15 @@ function createOAuth2Transporter() {
     });
 }
 
+// ------------------- ROUTES -------------------
+
+// Health check endpoint for Render monitoring
+app.get('/', (req, res) => {
+    res.send('Server is active and running!');
+});
+
 // 1. Route to Send OTP
-router.post('/send-otp', async (req, res) => {
+app.post('/send-otp', async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) {
@@ -75,7 +89,7 @@ router.post('/send-otp', async (req, res) => {
 });
 
 // 2. Route to Verify OTP
-router.post('/verify-otp', async (req, res) => {
+app.post('/verify-otp', async (req, res) => {
     try {
         const { email, otp } = req.body;
         if (!email || !otp) {
@@ -110,4 +124,18 @@ router.post('/verify-otp', async (req, res) => {
     }
 });
 
-module.exports = router;
+// Connect MongoDB if MONGO_URI is supplied
+if (process.env.MONGO_URI || process.env.MONGODB_URI) {
+    mongoose.connect(process.env.MONGO_URI || process.env.MONGODB_URI)
+        .then(() => console.log('>>> MongoDB Connected Successfully'))
+        .catch(err => console.error('>>> MongoDB Connection Error:', err.message));
+}
+
+// ================================================================
+// THIS BOTTOM BLOCK IS WHAT STOPS THE PORT SCAN TIMEOUT CRASH
+// ================================================================
+const PORT = process.env.PORT || 10000;
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`>>> Server is live and listening on 0.0.0.0:${PORT}`);
+});
