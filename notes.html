@@ -682,7 +682,7 @@ table th {
 <body>
 
 <div id="splash">
-    <img src="logo1.png" alt="Logo">
+    <img src="logo1.png" alt="Logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 24 24\' fill=\'%232ecc71\'><path d=\'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z\'/></svg>'">
     <div id="app-name">Your Health Partner</div>
 </div>
 
@@ -812,7 +812,7 @@ table th {
                     <option>Other</option>
                 </select>
                 <button onclick="calculateBMI()">Calculate BMI & Record Weight</button>
-                <h3 id="bmiResult"></h3>
+                <h3 id="bmiResult" style="text-align:center; margin-top:10px;"></h3>
 
                 <!-- Weight History Log Display -->
                 <div id="weightHistoryContainer" style="display:none; margin-top:10px;">
@@ -820,19 +820,19 @@ table th {
                     <div id="weightHistoryList" class="weight-history-list"></div>
                 </div>
                 
-                <div id="heightBox" style="display:none;">
+                <div id="heightBox" style="display:none; margin-top:15px;">
                     <p><b>Height Analysis</b></p>
                     <div class="height-scale"><div id="heightMarker" class="marker">📍</div></div>
                     <div class="labels"><span>Short</span><span>Medium</span><span>Tall</span></div>
-                    <p id="heightText"></p>
+                    <p id="heightText" style="margin-top:5px;"></p>
                     <p id="heightCategory"></p>
                 </div>
 
-                <div id="weightBox" style="display:none;">
+                <div id="weightBox" style="display:none; margin-top:15px;">
                     <p><b>Weight Analysis</b></p>
                     <div class="weight-scale"><div id="weightMarker" class="marker">📍</div></div>
                     <div class="labels"><span>Low</span><span>Normal</span><span>High</span><span>Obese</span></div>
-                    <p id="weightText"></p>
+                    <p id="weightText" style="margin-top:5px;"></p>
                     <p id="weightCategory"></p>
                     <button onclick="showDiet()" style="margin-top: 10px;">Show Diet Plan</button>
                 </div>
@@ -1201,6 +1201,7 @@ table th {
 <script>
 /* DYNAMIC CONFIG FOR API ENDPOINTS */
 const API_BASE_URL = 'https://healthapp-backend-1.onrender.com';
+
 /* GLOBAL STATE MANAGEMENT */
 let userState = {
     name: localStorage.getItem("userName") || "",
@@ -1235,6 +1236,7 @@ function startLoading() {
     const display = document.getElementById('number-display');
     const totalBlocks = 30;
     const blocks = [];
+    container.innerHTML = '';
     for (let i = 0; i < totalBlocks; i++) {
         let b = document.createElement('div');
         b.classList.add('block');
@@ -1316,6 +1318,7 @@ function validateEmail(email) {
 
 function showAuthMsg(elementId, text, type) {
     const el = document.getElementById(elementId);
+    if (!el) return;
     el.innerText = text;
     el.className = `auth-msg ${type}`;
     el.style.display = "block";
@@ -1323,11 +1326,11 @@ function showAuthMsg(elementId, text, type) {
 
 function hideAuthMsg(elementId) {
     const el = document.getElementById(elementId);
-    el.style.display = "none";
+    if (el) el.style.display = "none";
 }
 
 async function handleSendOTP(e) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     hideAuthMsg('email-error');
     
     const emailInput = document.getElementById('email').value.trim();
@@ -1361,7 +1364,7 @@ async function handleSendOTP(e) {
             
             startResendTimer();
             startOtpExpiryCountdown();
-            alert("OTP sent successfully");
+            alert("OTP sent successfully!");
         } else {
             showAuthMsg('email-error', data.message || 'Failed to send OTP.', 'error');
         }
@@ -1405,11 +1408,11 @@ function startResendTimer() {
     clearInterval(countdownTimer);
     countdownTimer = setInterval(() => {
         duration--;
-        timerDisplay.innerText = duration;
+        if (timerDisplay) timerDisplay.innerText = duration;
         if (duration <= 0) {
             clearInterval(countdownTimer);
             btnResend.disabled = false;
-            btnResend.innerText = "Resend OTP";
+            btnResend.innerHTML = 'Resend OTP';
         }
     }, 1000);
 }
@@ -1422,7 +1425,8 @@ function startOtpExpiryCountdown() {
 }
 
 async function handleResendOTP() {
-    document.getElementById('btn-resend').innerText = "Resend OTP (30s)";
+    const btnResend = document.getElementById('btn-resend');
+    btnResend.innerHTML = 'Resend OTP (<span id="timer-count">30</span>s)';
     otpBoxes.forEach(box => box.value = '');
     otpBoxes[0].focus();
     hideAuthMsg('otp-status');
@@ -1455,7 +1459,7 @@ async function handleVerifyOTP() {
 
         if (response.ok && data.success) {
             localStorage.setItem("token", data.token);
-            localStorage.setItem("email", data.email);
+            localStorage.setItem("email", data.email || emailInput);
             userState.jwtToken = data.token;
             userState.isVerified = true;
             userState.profileCompleted = true;
@@ -1504,31 +1508,34 @@ async function initPushNotifications() {
 
         if (permission !== "granted") return;
 
-        // Register Service Worker and wait for it to be ready
-        await navigator.serviceWorker.register('sw.js');
+        await navigator.serviceWorker.register('sw.js').catch(err => {
+            console.warn('Service worker script missing or unregisterable:', err);
+        });
+
         const reg = await navigator.serviceWorker.ready;
-        
         const token = localStorage.getItem("token");
-        if (reg.active && token) {
+        if (reg && reg.active && token) {
             reg.active.postMessage({ type: 'SET_TOKEN', token: token });
         }
 
-        let subscription = await reg.pushManager.getSubscription();
-        if (!subscription) {
-            subscription = await reg.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+        if (reg && reg.pushManager) {
+            let subscription = await reg.pushManager.getSubscription();
+            if (!subscription) {
+                subscription = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+                });
+            }
+
+            await fetch(`${API_BASE_URL}/api/push/subscribe`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify(subscription)
             });
         }
-
-        await fetch(`${API_BASE_URL}/api/push/subscribe`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify(subscription)
-        });
 
         navigator.serviceWorker.addEventListener('message', event => {
             if (event.data && event.data.type === 'REFRESH_ACTIVITY') {
@@ -1537,7 +1544,7 @@ async function initPushNotifications() {
             }
         });
     } catch (err) {
-        console.warn('Push notification initialization failed:', err);
+        console.warn('Push notification initialization skipped or failed:', err);
     }
 }
 
@@ -2035,7 +2042,9 @@ function updateDietTable() {
 
 function toggleActivity(id) {
     const content = document.getElementById(id);
-    content.style.display = (content.style.display === "block") ? "none" : "block";
+    if (content) {
+        content.style.display = (content.style.display === "block") ? "none" : "block";
+    }
 }
 
 function switchProgressView(viewType, event) {
@@ -2046,7 +2055,7 @@ function switchProgressView(viewType, event) {
     
     const buttons = document.querySelectorAll('.progress-tab-btn');
     buttons.forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    if (event && event.target) event.target.classList.add('active');
 }
 
 function updateDynamicProgressAndAchievements() {
