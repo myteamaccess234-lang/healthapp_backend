@@ -48,6 +48,11 @@ app.get('/sw.js', (req, res) => {
     res.sendFile(path.join(__dirname, 'sw.js'));
 });
 
+// Lightweight health check route for cron-job.org
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
 // Base route - serves notes.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'notes.html'));
