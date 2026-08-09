@@ -81,9 +81,10 @@ router.post('/verify-otp', async (req, res) => {
         user.otpExpiry = null;
         await user.save();
 
+        // Safe fallback added to prevent crash if process.env.JWT_SECRET is missing
         const token = jwt.sign(
             { id: user._id, email: user.email },
-            process.env.JWT_SECRET,
+            process.env.JWT_SECRET || 'fallback_jwt_secret',
             { expiresIn: '7d' }
         );
 
