@@ -5,8 +5,8 @@ const cors = require('cors');
 const { google } = require('googleapis');
 require('dotenv').config();
 
-// Mongoose Models
-const User = require('./userModel'); // Capital 'U' matching model exports
+// Mongoose Models - Matched exact case: usermodel.js
+const User = require('./usermodel');
 
 // Import Custom Feature Routers
 const activityRouter = require('./activityRouter');
@@ -139,7 +139,7 @@ app.post('/api/auth/verify-otp', async (req, res) => {
         user.otpExpiry = null;
         
         // Grant loggedIn achievement on first verification
-        if (!user.achievements.loggedIn) {
+        if (user.achievements && !user.achievements.loggedIn) {
             user.achievements.loggedIn = true;
         }
         
