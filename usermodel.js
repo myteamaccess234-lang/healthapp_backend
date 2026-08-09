@@ -4,7 +4,10 @@ const userSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        lowercase: true, // Prevents duplicate accounts from casing differences (e.g., User@email.com vs user@email.com)
+        trim: true,      // Removes accidental whitespace
+        index: true
     },
 
     otp: {
@@ -33,6 +36,6 @@ const userSchema = new mongoose.Schema({
         twoLakhSteps: { type: Boolean, default: false },
         allGoalsCompleted: { type: Boolean, default: false }
     }
-}, { timestamps: true }); // timestamps adds createdAt and updatedAt automatically
+}, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);
