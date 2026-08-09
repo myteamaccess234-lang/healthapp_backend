@@ -7,7 +7,12 @@ const activitySchema = new mongoose.Schema({
     caloriesBurned: { type: Number, default: 0 },
     waterLitres: { type: Number, default: 0 },
     mealCount: { type: Number, default: 0 },
-    calorieIntake: { type: Number, default: 0 }
+    calorieIntake: { type: Number, default: 0 },
+    
+    // ADDED: BMI tracking metrics
+    bmi: { type: Number, default: null },
+    height: { type: Number, default: null },
+    weight: { type: Number, default: null }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Activity', activitySchema);
