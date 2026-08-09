@@ -41,9 +41,14 @@ function createOAuth2Transporter() {
 
 // ------------------- ROUTES -------------------
 
-// Health check endpoint for Render monitoring
+// Root endpoint
 app.get('/', (req, res) => {
     res.send('Server is active and running!');
+});
+
+// ADDED: Health check endpoint for keep-awake services & cron jobs
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
 });
 
 // 1. Route to Send OTP (Matched /api/auth/send-otp)
