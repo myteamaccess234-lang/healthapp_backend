@@ -1,40 +1,61 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const nodemailer = require('nodemailer');
-const dns = require('dns');
 const jwt = require('jsonwebtoken');
-const cors = require('cors'); // <--- 1. Imported CORS
+const cors = require('cors');
+const { google } = require('googleapis');
 require('dotenv').config();
 
 const User = require('./usermodel'); // Ensure usermodel.js exists in the same directory
 
 const app = express();
 
-// Enable CORS for all incoming connections (allows Android WebView calls)
-app.use(cors()); // <--- 2. Enabled CORS Middleware
+// Enable CORS for all incoming connections
+app.use(cors());
 
 // Middleware to parse incoming JSON requests
 app.use(express.json());
 
-// Create OAuth2 Transporter on Port 587 (STARTTLS) for Render compatibility
-function createOAuth2Transporter() {
-    return nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,               // Switches from 465 to 587 to bypass cloud firewall blocks
-        secure: false,            // Must be false for port 587 (upgrades via STARTTLS)
-        auth: {
-            type: 'OAuth2',
-            user: process.env.EMAIL_USER,
-            clientId: process.env.GMAIL_CLIENT_ID,
-            clientSecret: process.env.GMAIL_CLIENT_SECRET,
-            refreshToken: process.env.GMAIL_REFRESH_TOKEN,
+// Set up Google OAuth2 Client for Gmail REST API (Uses HTTPS over Port 443)
+const OAuth2 = google.auth.OAuth2;
+const oauth2Client = new OAuth2(
+    process.env.GMAIL_CLIENT_ID,
+    process.env.GMAIL_CLIENT_SECRET,
+    "https://developers.google.com/oauthplayground"
+);
+
+oauth2Client.setCredentials({
+    refresh_token: process.env.GMAIL_REFRESH_TOKEN
+});
+
+// Helper function to send email via Gmail API over HTTPS
+async function sendEmailViaGmailAPI(toEmail, otp) {
+    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+
+    const subject = 'Your Health App Login OTP';
+    const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+    const messageParts = [
+        `From: Health App <${process.env.EMAIL_USER}>`,
+        `To: ${toEmail}`,
+        `Subject: ${utf8Subject}`,
+        'Content-Type: text/html; charset=utf-8',
+        'MIME-Version: 1.0',
+        '',
+        `<p>Your OTP code for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
+    ];
+    const message = messageParts.join('\n');
+
+    // Base64Url encode the message for Gmail API
+    const encodedMessage = Buffer.from(message)
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+    await gmail.users.messages.send({
+        userId: 'me',
+        requestBody: {
+            raw: encodedMessage,
         },
-        tls: {
-            rejectUnauthorized: false // Prevents handshake rejections
-        },
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
-        socketTimeout: 20000
     });
 }
 
@@ -50,7 +71,7 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
-// 1. Route to Send OTP (Matched /api/auth/send-otp)
+// 1. Route to Send OTP
 app.post('/api/auth/send-otp', async (req, res) => {
     try {
         const { email } = req.body;
@@ -74,15 +95,8 @@ app.post('/api/auth/send-otp', async (req, res) => {
         console.log(`>>> OTP FOR ${email}: [ ${otp} ] <<<`);
         console.log(`==========================================`);
 
-        const mailOptions = {
-            from: `Health App <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: 'Your Health App Login OTP',
-            html: `<p>Your OTP code for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
-        };
-
-        const transporter = createOAuth2Transporter();
-        await transporter.sendMail(mailOptions);
+        // Send via HTTPS REST API (Bypasses Render SMTP blocks)
+        await sendEmailViaGmailAPI(email, otp);
         console.log(`>>> SUCCESS: OTP Email delivered to ${email} <<<`);
 
         return res.status(200).json({ success: true, message: "OTP sent successfully." });
@@ -96,7 +110,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
     }
 });
 
-// 2. Route to Verify OTP (Matched /api/auth/verify-otp)
+// 2. Route to Verify OTP
 app.post('/api/auth/verify-otp', async (req, res) => {
     try {
         const { email, otp } = req.body;
