@@ -5,14 +5,14 @@ const cors = require('cors');
 const { google } = require('googleapis');
 require('dotenv').config();
 
-// Mongoose Models - Matched exact case: usermodel.js
+// Mongoose Models - Matched exact casing from repository
 const User = require('./usermodel');
 
-// Import Custom Feature Routers
-const activityRouter = require('./activityRouter');
-const bmiRouter = require('./bmiRouter');
-const notificationRouter = require('./notificationRouter');
-const pushRouter = require('./pushRouter');
+// Import Custom Feature Routers - Matched exact names from repository
+const activityRouter = require('./activityroutes');
+const bmiRouter = require('./bmiroutes');
+const notificationRouter = require('./notifications');
+const pushRouter = require('./pushRoutes');
 
 const app = express();
 
