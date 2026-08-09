@@ -16,17 +16,12 @@ app.use(cors()); // <--- 2. Enabled CORS Middleware
 // Middleware to parse incoming JSON requests
 app.use(express.json());
 
-// Custom DNS lookup function that ONLY returns IPv4 addresses
-const lookupIPv4 = (hostname, options, callback) => {
-    return dns.lookup(hostname, { family: 4 }, callback);
-};
-
-// Create OAuth2 Transporter with strictly forced IPv4 lookup and connection timeouts
+// Create OAuth2 Transporter on Port 587 (STARTTLS) for Render compatibility
 function createOAuth2Transporter() {
     return nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
+        port: 587,               // Switches from 465 to 587 to bypass cloud firewall blocks
+        secure: false,            // Must be false for port 587 (upgrades via STARTTLS)
         auth: {
             type: 'OAuth2',
             user: process.env.EMAIL_USER,
@@ -34,11 +29,12 @@ function createOAuth2Transporter() {
             clientSecret: process.env.GMAIL_CLIENT_SECRET,
             refreshToken: process.env.GMAIL_REFRESH_TOKEN,
         },
-        family: 4,              // Force IPv4
-        lookup: lookupIPv4,     // Custom lookup that blocks IPv6 entirely
-        connectionTimeout: 10000, // 10 seconds connection timeout
-        greetingTimeout: 10000,   // 10 seconds greeting timeout
-        socketTimeout: 15000      // 15 seconds socket timeout
+        tls: {
+            rejectUnauthorized: false // Prevents handshake rejections
+        },
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 20000
     });
 }
 
