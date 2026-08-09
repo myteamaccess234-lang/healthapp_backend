@@ -3,11 +3,15 @@ const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 const dns = require('dns');
 const jwt = require('jsonwebtoken');
+const cors = require('cors'); // <--- 1. Imported CORS
 require('dotenv').config();
 
 const User = require('./usermodel'); // Ensure usermodel.js exists in the same directory
 
 const app = express();
+
+// Enable CORS for all incoming connections (allows Android WebView calls)
+app.use(cors()); // <--- 2. Enabled CORS Middleware
 
 // Middleware to parse incoming JSON requests
 app.use(express.json());
@@ -42,8 +46,8 @@ app.get('/', (req, res) => {
     res.send('Server is active and running!');
 });
 
-// 1. Route to Send OTP
-app.post('/send-otp', async (req, res) => {
+// 1. Route to Send OTP (Matched /api/auth/send-otp)
+app.post('/api/auth/send-otp', async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) {
@@ -88,8 +92,8 @@ app.post('/send-otp', async (req, res) => {
     }
 });
 
-// 2. Route to Verify OTP
-app.post('/verify-otp', async (req, res) => {
+// 2. Route to Verify OTP (Matched /api/auth/verify-otp)
+app.post('/api/auth/verify-otp', async (req, res) => {
     try {
         const { email, otp } = req.body;
         if (!email || !otp) {
@@ -131,9 +135,7 @@ if (process.env.MONGO_URI || process.env.MONGODB_URI) {
         .catch(err => console.error('>>> MongoDB Connection Error:', err.message));
 }
 
-// ================================================================
 // THIS BOTTOM BLOCK IS WHAT STOPS THE PORT SCAN TIMEOUT CRASH
-// ================================================================
 const PORT = process.env.PORT || 10000;
 
 app.listen(PORT, '0.0.0.0', () => {
