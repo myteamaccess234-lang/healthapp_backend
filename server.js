@@ -21,7 +21,7 @@ const lookupIPv4 = (hostname, options, callback) => {
     return dns.lookup(hostname, { family: 4 }, callback);
 };
 
-// Create OAuth2 Transporter with strictly forced IPv4 lookup
+// Create OAuth2 Transporter with strictly forced IPv4 lookup and connection timeouts
 function createOAuth2Transporter() {
     return nodemailer.createTransport({
         host: 'smtp.gmail.com',
@@ -34,8 +34,11 @@ function createOAuth2Transporter() {
             clientSecret: process.env.GMAIL_CLIENT_SECRET,
             refreshToken: process.env.GMAIL_REFRESH_TOKEN,
         },
-        family: 4,             // Force IPv4
-        lookup: lookupIPv4    // Custom lookup that blocks IPv6 entirely
+        family: 4,              // Force IPv4
+        lookup: lookupIPv4,     // Custom lookup that blocks IPv6 entirely
+        connectionTimeout: 10000, // 10 seconds connection timeout
+        greetingTimeout: 10000,   // 10 seconds greeting timeout
+        socketTimeout: 15000      // 15 seconds socket timeout
     });
 }
 
@@ -46,7 +49,7 @@ app.get('/', (req, res) => {
     res.send('Server is active and running!');
 });
 
-// ADDED: Health check endpoint for keep-awake services & cron jobs
+// Health check endpoint for keep-awake services & cron jobs
 app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
@@ -140,9 +143,9 @@ if (process.env.MONGO_URI || process.env.MONGODB_URI) {
         .catch(err => console.error('>>> MongoDB Connection Error:', err.message));
 }
 
-// THIS BOTTOM BLOCK IS WHAT STOPS THE PORT SCAN TIMEOUT CRASH
-const PORT = process.env.PORT || 10000;
+// Dynamic PORT binding for Render
+const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`>>> Server is live and listening on 0.0.0.0:${PORT}`);
+app.listen(PORT, () => {
+    console.log(`>>> Server is live and listening on port ${PORT}`);
 });
