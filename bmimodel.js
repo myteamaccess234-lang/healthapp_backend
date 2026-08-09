@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const bmiSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     email: { type: String, required: true },
     age: { type: Number, required: true },
     height: { type: Number, required: true },
@@ -8,6 +9,6 @@ const bmiSchema = new mongoose.Schema({
     bmi: { type: Number, required: true },
     category: { type: String, required: true },
     date: { type: String, required: true }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model('BmiRecord', bmiSchema);
