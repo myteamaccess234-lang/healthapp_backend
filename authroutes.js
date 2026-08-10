@@ -4,30 +4,31 @@ const nodemailer = require('nodemailer');
 const User = require('./usermodel');
 const jwt = require('jsonwebtoken');
 
-// Create OAuth2 Transporter (Uses HTTPS on Port 443 — works seamlessly on Render)
-function createOAuth2Transporter() {
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            type: 'OAuth2',
-            user: process.env.EMAIL_USER,
-            clientId: process.env.GMAIL_CLIENT_ID,
-            clientSecret: process.env.GMAIL_CLIENT_SECRET,
-            refreshToken: process.env.GMAIL_REFRESH_TOKEN,
-        },
-    });
-}
+// Reuse transporter instance to avoid recreating overhead per request
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        type: 'OAuth2',
+        user: process.env.EMAIL_USER,
+        clientId: process.env.GMAIL_CLIENT_ID,
+        clientSecret: process.env.GMAIL_CLIENT_SECRET,
+        refreshToken: process.env.GMAIL_REFRESH_TOKEN,
+    },
+});
 
 // 1. Route to Send OTP
 router.post('/send-otp', async (req, res) => {
     try {
-        const { email } = req.body;
+        let { email } = req.body;
         if (!email) {
             return res.status(400).json({ success: false, message: "Email is required" });
         }
 
+        // Normalize email to handle case-sensitivity issues safely
+        email = email.toLowerCase().trim();
+
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
         let user = await User.findOne({ email });
         if (!user) {
@@ -46,10 +47,15 @@ router.post('/send-otp', async (req, res) => {
             from: `Health App <${process.env.EMAIL_USER}>`,
             to: email,
             subject: 'Your Health App Login OTP',
-            html: `<p>Your OTP code for login is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
+            html: `
+              <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                <h2>Health App Authentication</h2>
+                <p>Your OTP code for login is: <strong style="font-size: 22px; color: #007bff;">${otp}</strong></p>
+                <p>This code is valid for <strong>10 minutes</strong>.</p>
+              </div>
+            `
         };
 
-        const transporter = createOAuth2Transporter();
         await transporter.sendMail(mailOptions);
         console.log(`>>> SUCCESS: OTP Email delivered to ${email} <<<`);
 
@@ -67,24 +73,34 @@ router.post('/send-otp', async (req, res) => {
 // 2. Route to Verify OTP
 router.post('/verify-otp', async (req, res) => {
     try {
-        const { email, otp } = req.body;
+        let { email, otp } = req.body;
         if (!email || !otp) {
             return res.status(400).json({ success: false, message: "Email and OTP are required" });
         }
+
+        // Normalize email
+        email = email.toLowerCase().trim();
 
         const user = await User.findOne({ email });
         if (!user || user.otp !== otp || user.otpExpiry < new Date()) {
             return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
         }
 
+        // Clear OTP fields after successful login
         user.otp = null;
         user.otpExpiry = null;
         await user.save();
 
-        // Safe fallback added to prevent crash if process.env.JWT_SECRET is missing
+        // Enforce secure JWT configuration
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            console.error("CRITICAL ERROR: JWT_SECRET environment variable is not defined!");
+            return res.status(500).json({ success: false, message: "Server configuration error" });
+        }
+
         const token = jwt.sign(
             { id: user._id, email: user.email },
-            process.env.JWT_SECRET || 'fallback_jwt_secret',
+            jwtSecret,
             { expiresIn: '7d' }
         );
 
