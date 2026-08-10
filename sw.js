@@ -88,8 +88,10 @@ self.addEventListener('push', function(event) {
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
     
-    const action = event.action || 'yes-water'; 
+    // Fallback to 'view' if clicked main body, avoiding unintended water logging
+    const action = event.action || 'view'; 
     const notificationId = event.notification.data ? event.notification.data.id : null;
+    const origin = self.location.origin;
 
     event.waitUntil(
         (async function() {
@@ -98,8 +100,8 @@ self.addEventListener('notificationclick', function(event) {
             if (token) {
                 try {
                     // 1. Log Quick Actions (Water / Meal) directly to Activity Router
-                    if (action === 'yes-water' || action === 'yes-food' || action === 'log-meal') {
-                        await fetch('/api/activities/log-hydration', {
+                    if (['yes-water', 'yes-food', 'log-meal'].includes(action)) {
+                        await fetch(`${origin}/api/activities/log-hydration`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -111,7 +113,7 @@ self.addEventListener('notificationclick', function(event) {
 
                     // 2. Log Snooze (20-min repeat) or general responses to Notification Router
                     if (notificationId) {
-                        await fetch(`/api/notifications/${notificationId}/respond`, {
+                        await fetch(`${origin}/api/notifications/${notificationId}/respond`, {
                             method: 'PATCH',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -127,7 +129,7 @@ self.addEventListener('notificationclick', function(event) {
                 console.warn("Skipping background fetch: Missing auth token in Cache Storage.");
             }
 
-            // 3. Focus or open app window
+            // 3. Focus existing window or open target page
             const windowClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
             
             for (let client of windowClients) {
