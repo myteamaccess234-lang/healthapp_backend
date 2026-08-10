@@ -37,7 +37,7 @@ self.addEventListener('push', function(event) {
         title: 'Health App Alert', 
         body: 'New notification received', 
         id: null, 
-        category: 'Hydration',
+        category: 'General',
         actions: [] 
     };
     
@@ -51,18 +51,24 @@ self.addEventListener('push', function(event) {
 
     const resolvedId = payload.id || payload._id || payload.notificationId;
 
-    // Dynamically inject default quick-action push buttons if none provided
+    // Dynamically inject default quick-action push buttons
     let notificationActions = payload.actions || [];
     if (notificationActions.length === 0) {
         if (payload.category === 'Meals') {
             notificationActions = [
-                { action: 'yes-food', title: 'Meal Logged 🍲' },
-                { action: 'no-forgot', title: 'No, I forgot ⏰' }
+                { action: 'yes-food', title: 'Log Meal 🍲' },
+                { action: 'no-forgot', title: 'Forgot ⏰' }
+            ];
+        } else if (payload.category === 'Hydration') {
+            notificationActions = [
+                { action: 'yes-water', title: 'Log Water 💧' },
+                { action: 'no-forgot', title: 'Forgot ⏰' }
             ];
         } else {
+            // DUAL TRIGGER BUTTONS (Both Water and Food)
             notificationActions = [
-                { action: 'yes-water', title: 'Drank Water (+0.5L) 💧' },
-                { action: 'no-forgot', title: 'No, I forgot ⏰' }
+                { action: 'yes-water', title: 'Drank Water 💧' },
+                { action: 'yes-food', title: 'Ate Meal 🍲' }
             ];
         }
     }
@@ -88,7 +94,7 @@ self.addEventListener('push', function(event) {
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
     
-    // Fallback to 'view' if clicked main body, avoiding unintended water logging
+    // Fallback to 'view' if clicked main body, avoiding unintended logs
     const action = event.action || 'view'; 
     const notificationId = event.notification.data ? event.notification.data.id : null;
     const origin = self.location.origin;
@@ -99,8 +105,8 @@ self.addEventListener('notificationclick', function(event) {
 
             if (token) {
                 try {
-                    // 1. Log Quick Actions (Water / Meal) directly to Activity Router
-                    if (['yes-water', 'yes-food', 'log-meal'].includes(action)) {
+                    // 1. Log Quick Action: WATER
+                    if (action === 'yes-water') {
                         await fetch(`${origin}/api/activities/log-hydration`, {
                             method: 'POST',
                             headers: {
@@ -111,7 +117,19 @@ self.addEventListener('notificationclick', function(event) {
                         });
                     }
 
-                    // 2. Log Snooze (20-min repeat) or general responses to Notification Router
+                    // 2. Log Quick Action: FOOD / MEAL
+                    if (['yes-food', 'log-meal'].includes(action)) {
+                        await fetch(`${origin}/api/activities/log-meal`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({ action: action })
+                        });
+                    }
+
+                    // 3. Log Snooze / Notification Responses
                     if (notificationId) {
                         await fetch(`${origin}/api/notifications/${notificationId}/respond`, {
                             method: 'PATCH',
@@ -129,7 +147,7 @@ self.addEventListener('notificationclick', function(event) {
                 console.warn("Skipping background fetch: Missing auth token in Cache Storage.");
             }
 
-            // 3. Focus existing window or open target page
+            // 4. Focus existing window or open target page
             const windowClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
             
             for (let client of windowClients) {
