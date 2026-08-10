@@ -8,10 +8,12 @@ const dns = require('dns');
 // Force Node.js DNS resolution to prioritize IPv4 over IPv6
 dns.setDefaultResultOrder('ipv4first');
 
-// Reuse transporter instance to avoid recreating overhead per request
+// Reuse transporter instance with explicit IPv4 host configurations
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    family: 4, // Force Nodemailer to establish connection using IPv4
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // Use SSL/TLS
+    family: 4,    // Force Nodemailer to establish connection strictly using IPv4
     auth: {
         type: 'OAuth2',
         user: process.env.EMAIL_USER,
