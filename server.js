@@ -3,7 +3,11 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const cron = require('node-cron');
 const webpush = require('web-push');
+const dns = require('dns');
 require('dotenv').config();
+
+// Force Node.js DNS resolution to prioritize IPv4 globally over IPv6
+dns.setDefaultResultOrder('ipv4first');
 
 // Mongoose Models - Exact casing from repository
 const Notification = require('./notificationModel');
