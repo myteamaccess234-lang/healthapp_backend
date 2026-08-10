@@ -6,8 +6,8 @@ const Activity = require('./activityModel');
 const User = require('./usermodel');
 const authMiddleware = require('./authMiddleware');
 
-// Helper function to evaluate and unlock achievements
-async function evaluateAchievements(userId, activityData) {
+// Helper function to evaluate and unlock achievements cleanly
+async function evaluateAchievements(userId, activityData, stepDelta = 0) {
     let user = await User.findById(userId);
     if (!user) return;
 
@@ -27,8 +27,11 @@ async function evaluateAchievements(userId, activityData) {
         user.achievements.mealHero = true;
     }
 
-    // 4. 2 Lakh Step Completed (Cumulative lifetime check)
-    user.lifetimeSteps = (user.lifetimeSteps || 0) + (activityData.steps || 0);
+    // 4. 2 Lakh Step Completed (Cumulative lifetime check using step delta)
+    if (stepDelta > 0) {
+        user.lifetimeSteps = (user.lifetimeSteps || 0) + stepDelta;
+    }
+    
     if (user.lifetimeSteps >= 200000) {
         user.achievements.twoLakhSteps = true;
     }
@@ -58,9 +61,9 @@ router.post('/save', authMiddleware, async (req, res) => {
             waterLitres, 
             mealCount, 
             calorieIntake,
-            bmi,      // <--- TRACKS BMI
-            height,   // <--- TRACKS HEIGHT
-            weight    // <--- TRACKS WEIGHT
+            bmi,     // TRACKS BMI
+            height,  // TRACKS HEIGHT
+            weight   // TRACKS WEIGHT
         } = req.body;
         
         const userId = req.user?.id || req.user?._id || req.user?.userId;
@@ -71,9 +74,14 @@ router.post('/save', authMiddleware, async (req, res) => {
 
         const currentDate = date || new Date().toISOString().split('T')[0];
         let activity = await Activity.findOne({ userId, date: currentDate });
+        let stepDelta = 0;
 
         if (activity) {
-            if (steps !== undefined) activity.steps = steps;
+            if (steps !== undefined) {
+                const oldSteps = activity.steps || 0;
+                stepDelta = Math.max(0, steps - oldSteps); // Track only incremental new steps
+                activity.steps = steps;
+            }
             if (caloriesBurned !== undefined) activity.caloriesBurned = caloriesBurned;
             if (waterLitres !== undefined) activity.waterLitres = waterLitres;
             if (mealCount !== undefined) activity.mealCount = mealCount;
@@ -86,6 +94,7 @@ router.post('/save', authMiddleware, async (req, res) => {
 
             await activity.save();
         } else {
+            stepDelta = steps || 0;
             activity = new Activity({
                 userId,
                 date: currentDate,
@@ -101,8 +110,8 @@ router.post('/save', authMiddleware, async (req, res) => {
             await activity.save();
         }
 
-        // Evaluate achievements automatically upon saving
-        await evaluateAchievements(userId, activity);
+        // Evaluate achievements automatically with incremental step delta
+        await evaluateAchievements(userId, activity, stepDelta);
 
         res.status(200).json({ success: true, message: "Activity and BMI recorded successfully", activity });
     } catch (err) {
@@ -145,7 +154,8 @@ router.post('/log-hydration', authMiddleware, async (req, res) => {
         }
 
         if (action === 'yes-water') {
-            activity.waterLitres = (activity.waterLitres || 0) + 0.5; // Add 0.5L
+            const updatedWater = (activity.waterLitres || 0) + 0.5;
+            activity.waterLitres = Math.round(updatedWater * 100) / 100; // Round to 2 decimal places
             await activity.save();
             await evaluateAchievements(userId, activity);
         } else if (action === 'yes-food' || action === 'log-meal') {
