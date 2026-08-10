@@ -31,6 +31,18 @@ app.use(cors());
 // Middleware to parse incoming JSON requests
 app.use(express.json());
 
+// ------------------- VAPID WEB-PUSH SETUP -------------------
+
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+        process.env.VAPID_MAILTO || 'mailto:support@example.com',
+        process.env.VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY
+    );
+} else {
+    console.warn("⚠️ VAPID keys missing in environment variables. Web push notifications may fail.");
+}
+
 // ------------------- GMAIL API REST SETUP (HTTPS Over Port 443) -------------------
 
 const OAuth2 = google.auth.OAuth2;
@@ -194,10 +206,10 @@ cron.schedule('* * * * *', async () => {
             const subscriptions = await Subscription.find({ userId: notification.userId });
             
             const payload = JSON.stringify({
-                title: `⏰ Reminder: ${notification.title}`,
-                body: notification.message,
+                title: `⏰ Reminder: ${notification.title || 'Health Alert'}`,
+                body: notification.message || notification.body || 'You have a scheduled reminder!',
                 id: notification._id.toString(),
-                category: notification.category
+                category: notification.category || 'General'
             });
 
             for (const sub of subscriptions) {
