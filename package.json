@@ -1,14 +1,19 @@
 {
   "name": "healthapp_backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend API for Health and Activity Tracking App",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "jest --detectOpenHandles --forceExit",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "jest --detectOpenHandles --forceExit"
   },
-  "keywords": [],
+  "keywords": [
+    "fitness",
+    "health",
+    "backend",
+    "render"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
