@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-// Direct imports matching your root directory layout
+// Direct imports matching root directory layout
 const Notification = require('./notificationModel'); 
 const verifyToken = require('./authMiddleware');
 
@@ -14,7 +14,7 @@ router.get('/', verifyToken, async (req, res) => {
             return res.status(401).json({ success: false, message: "Unauthorized: User ID missing from token" });
         }
 
-        // Query by userId (matching notificationModel schema)
+        // Query notifications by userId ordered by newest first
         const notifications = await Notification.find({ userId }).sort({ createdAt: -1 });
         res.status(200).json(notifications);
     } catch (err) {
@@ -23,11 +23,15 @@ router.get('/', verifyToken, async (req, res) => {
     }
 });
 
-// 2. Route to handle interactive responses (e.g., 'yes-water', 'yes-food', 'no-forgot', 'yes', 'no')
+// 2. Handle interactive responses (e.g., 'yes-water', 'yes-food', 'no-forgot', 'yes', 'no')
 router.patch('/:id/respond', verifyToken, async (req, res) => {
     try {
-        const { response, action } = req.body; // Accepts 'yes', 'no', 'yes-water', 'yes-food', 'no-forgot'
+        const { response, action } = req.body; // Accepts 'yes', 'no', 'yes-water', 'yes-food', 'no-forgot', 'snooze'
         const userAction = action || response;
+
+        if (!userAction) {
+            return res.status(400).json({ success: false, message: "Response action is required" });
+        }
 
         const notification = await Notification.findById(req.params.id);
 
@@ -38,7 +42,7 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
         notification.actionTaken = userAction;
 
         // HANDLE POSITIVE RESPONSES ('yes', 'yes-water', 'yes-food')
-        if (userAction === 'yes' || userAction === 'yes-water' || userAction === 'yes-food') {
+        if (['yes', 'yes-water', 'yes-food'].includes(userAction)) {
             notification.status = 'Completed';
             notification.snoozedUntil = null;
             await notification.save();
@@ -51,18 +55,14 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
         } 
         
         // HANDLE SNOOZE / NEGATIVE RESPONSES ('no', 'no-forgot', 'snooze')
-        else if (userAction === 'no' || userAction === 'no-forgot' || userAction === 'snooze') {
+        else if (['no', 'no-forgot', 'snooze'].includes(userAction)) {
             const twentyMinutesLater = new Date(Date.now() + 20 * 60 * 1000);
 
             notification.status = 'Snoozed';
             notification.snoozedUntil = twentyMinutesLater;
             await notification.save();
 
-            // 20-Minute Timer Execution
-            setTimeout(async () => {
-                console.log(`>>> 20 MIN ELAPSED: Snooze timer expired for Notification ${req.params.id} <<<`);
-                // FCM / Push notification trigger can be invoked here
-            }, 20 * 60 * 1000);
+            console.log(`>>> NOTIFICATION ${req.params.id} SNOOZED UNTIL: ${twentyMinutesLater.toISOString()} <<<`);
 
             return res.status(200).json({ 
                 success: true, 
@@ -74,6 +74,7 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
 
         // DEFAULT DISMISSAL
         notification.status = 'Dismissed';
+        notification.snoozedUntil = null;
         await notification.save();
 
         res.status(200).json({ success: true, message: "Notification dismissed", notification });
