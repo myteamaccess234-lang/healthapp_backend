@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true,
-        lowercase: true, // Prevents duplicate accounts from casing differences (e.g., User@email.com vs user@email.com)
+        lowercase: true, // Prevents duplicate accounts from casing differences
         trim: true,      // Removes accidental whitespace
         index: true
     },
@@ -20,12 +20,13 @@ const userSchema = new mongoose.Schema({
         default: null
     },
 
-    // NEW FIELDS FOR ACHIEVEMENTS & MILESTONES
+    // TRACKS LIFETIME ACCUMULATED STEPS
     lifetimeSteps: {
         type: Number,
         default: 0
     },
 
+    // ACHIEVEMENTS & MILESTONES TRACKER
     achievements: {
         loggedIn: { type: Boolean, default: false },
         firstDay: { type: Boolean, default: false },
@@ -36,6 +37,8 @@ const userSchema = new mongoose.Schema({
         twoLakhSteps: { type: Boolean, default: false },
         allGoalsCompleted: { type: Boolean, default: false }
     }
-}, { timestamps: true });
+}, { 
+    timestamps: true 
+});
 
 module.exports = mongoose.model('User', userSchema);
