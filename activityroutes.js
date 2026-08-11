@@ -6,52 +6,60 @@ const Activity = require('./activityModel');
 const User = require('./usermodel');
 const authMiddleware = require('./authMiddleware');
 
-// Helper function to evaluate and unlock achievements cleanly
+/**
+ * Helper function to evaluate and unlock achievements cleanly
+ */
 async function evaluateAchievements(userId, activityData, stepDelta = 0) {
-    let user = await User.findById(userId);
-    if (!user) return;
+    try {
+        let user = await User.findById(userId);
+        if (!user) return;
 
-    if (!user.achievements) user.achievements = {};
+        if (!user.achievements) user.achievements = {};
 
-    // 1. Logged in & First Day
-    user.achievements.loggedIn = true;
-    user.achievements.firstDay = true;
+        // 1. Logged in & First Day
+        user.achievements.loggedIn = true;
+        user.achievements.firstDay = true;
 
-    // 2. Hydration Hero (target >= 3.0 Litres)
-    if (activityData.waterLitres >= 3.0) {
-        user.achievements.hydrationHero = true;
+        // 2. Hydration Hero (target >= 3.0 Litres)
+        if (activityData.waterLitres >= 3.0) {
+            user.achievements.hydrationHero = true;
+        }
+
+        // 3. Meal Hero (mealCount >= 4)
+        if (activityData.mealCount >= 4) {
+            user.achievements.mealHero = true;
+        }
+
+        // 4. 2 Lakh Step Completed (Cumulative lifetime check using step delta)
+        if (stepDelta > 0) {
+            user.lifetimeSteps = (user.lifetimeSteps || 0) + stepDelta;
+        }
+        
+        if (user.lifetimeSteps >= 200000) {
+            user.achievements.twoLakhSteps = true;
+        }
+
+        // 5. All Goals Completed
+        if (
+            activityData.steps >= 10000 &&
+            activityData.waterLitres >= 3.0 &&
+            activityData.mealCount >= 4 &&
+            activityData.caloriesBurned >= 500
+        ) {
+            user.achievements.allGoalsCompleted = true;
+        }
+
+        await user.save();
+    } catch (err) {
+        console.error("Error evaluating achievements:", err.message);
     }
-
-    // 3. Meal Hero (mealCount >= 4)
-    if (activityData.mealCount >= 4) {
-        user.achievements.mealHero = true;
-    }
-
-    // 4. 2 Lakh Step Completed (Cumulative lifetime check using step delta)
-    if (stepDelta > 0) {
-        user.lifetimeSteps = (user.lifetimeSteps || 0) + stepDelta;
-    }
-    
-    if (user.lifetimeSteps >= 200000) {
-        user.achievements.twoLakhSteps = true;
-    }
-
-    // 5. All Goals Completed
-    if (
-        activityData.steps >= 10000 &&
-        activityData.waterLitres >= 3.0 &&
-        activityData.mealCount >= 4 &&
-        activityData.caloriesBurned >= 500
-    ) {
-        user.achievements.allGoalsCompleted = true;
-    }
-
-    await user.save();
 }
 
-// ------------------- ROUTES -------------------
+// ==============================================================================
+// ROUTES
+// ==============================================================================
 
-// 1. Save or update daily activity log (INCLUDES BMI, HEIGHT, WEIGHT)
+// 1. Save or update daily activity log (INCLUDES BMI, HEIGHT, WEIGHT, STEPS)
 router.post('/save', authMiddleware, async (req, res) => {
     try {
         const { 
@@ -113,14 +121,83 @@ router.post('/save', authMiddleware, async (req, res) => {
         // Evaluate achievements automatically with incremental step delta
         await evaluateAchievements(userId, activity, stepDelta);
 
-        res.status(200).json({ success: true, message: "Activity and BMI recorded successfully", activity });
+        res.status(200).json({ 
+            success: true, 
+            message: "Activity and BMI recorded successfully", 
+            activity 
+        });
     } catch (err) {
         console.error("Server error in /save activity:", err.message);
         res.status(500).json({ success: false, message: err.message });
     }
 });
 
-// 2. Fetch activity history for logged-in user
+// 2. Specialized Route: Native Background Step Sync (Screen-Off Hardware Pedometer Sync)
+router.post('/sync-steps', authMiddleware, async (req, res) => {
+    try {
+        const { steps, caloriesBurned, date } = req.body;
+        const userId = req.user?.id || req.user?._id || req.user?.userId;
+
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "Unauthorized: User ID missing from token" });
+        }
+
+        if (steps === undefined || steps === null) {
+            return res.status(400).json({ success: false, message: "Steps payload is required" });
+        }
+
+        const currentDate = date || new Date().toISOString().split('T')[0];
+        let activity = await Activity.findOne({ userId, date: currentDate });
+        let stepDelta = 0;
+
+        if (activity) {
+            const oldSteps = activity.steps || 0;
+            // Only update if step count from hardware pedometer is greater than current DB steps
+            if (steps > oldSteps) {
+                stepDelta = steps - oldSteps;
+                activity.steps = steps;
+                
+                // Auto-calculate or update calories burned if provided
+                if (caloriesBurned !== undefined) {
+                    activity.caloriesBurned = caloriesBurned;
+                } else {
+                    activity.caloriesBurned = Math.floor(steps * 0.04);
+                }
+
+                await activity.save();
+            }
+        } else {
+            stepDelta = steps;
+            activity = new Activity({
+                userId,
+                date: currentDate,
+                steps: steps,
+                caloriesBurned: caloriesBurned !== undefined ? caloriesBurned : Math.floor(steps * 0.04)
+            });
+            await activity.save();
+        }
+
+        // Increment lifetime steps and re-check step achievements
+        if (stepDelta > 0) {
+            await evaluateAchievements(userId, activity, stepDelta);
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Background steps synced successfully",
+            activity: {
+                date: activity.date,
+                steps: activity.steps,
+                caloriesBurned: activity.caloriesBurned
+            }
+        });
+    } catch (err) {
+        console.error("Server error in /sync-steps:", err.message);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 3. Fetch activity history for logged-in user
 router.get('/history', authMiddleware, async (req, res) => {
     try {
         const userId = req.user?.id || req.user?._id || req.user?.userId;
@@ -137,7 +214,7 @@ router.get('/history', authMiddleware, async (req, res) => {
     }
 });
 
-// 3. Dual Quick-Actions from Push Notifications (Water & Food)
+// 4. Dual Quick-Actions from Push Notifications (Water & Food)
 router.post('/log-hydration', authMiddleware, async (req, res) => {
     try {
         const { action } = req.body;
