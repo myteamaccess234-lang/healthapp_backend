@@ -5,64 +5,94 @@ const activitySchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'User', 
         required: true,
-        index: true 
+        index: true
     },
+
     date: { 
         type: String, 
-        required: true 
+        required: true
     }, // Stored in YYYY-MM-DD format
 
     steps: { 
         type: Number, 
-        default: 0 
+        default: 0
     },
 
     caloriesBurned: { 
         type: Number, 
-        default: 0 
+        default: 0
     },
 
     waterLitres: { 
         type: Number, 
-        default: 0 
+        default: 0
     },
 
     mealCount: { 
         type: Number, 
-        default: 0 
+        default: 0
     },
 
     calorieIntake: { 
         type: Number, 
-        default: 0 
+        default: 0
     },
 
-    // Sleep tracking
+    // =========================================================
+    // SLEEP TRACKING
+    // =========================================================
+
+    // Total sleep duration in minutes
     sleepMinutes: {
         type: Number,
         default: 0
     },
 
-    // BMI tracking metrics
+    // Time when sleep started
+    sleepStart: {
+        type: Date,
+        default: null
+    },
+
+    // Time when user woke up / sleep stopped
+    sleepEnd: {
+        type: Date,
+        default: null
+    },
+
+    // Whether the user is currently sleeping
+    isSleeping: {
+        type: Boolean,
+        default: false
+    },
+
+    // =========================================================
+    // BMI TRACKING
+    // =========================================================
+
     bmi: { 
         type: Number, 
-        default: null 
+        default: null
     },
 
     height: { 
         type: Number, 
-        default: null 
+        default: null
     },
 
     weight: { 
         type: Number, 
-        default: null 
+        default: null
     }
+
 }, { 
-    timestamps: true 
+    timestamps: true
 });
 
-// COMPOUND INDEX: Guarantees lightning-fast lookups for a user's specific daily log
-activitySchema.index({ userId: 1, date: 1 }, { unique: true });
+// COMPOUND INDEX
+activitySchema.index(
+    { userId: 1, date: 1 },
+    { unique: true }
+);
 
 module.exports = mongoose.model('Activity', activitySchema);
