@@ -10,7 +10,7 @@ const notificationSchema = new mongoose.Schema({
   category: { 
     type: String, 
     required: true,
-    enum: ['Hydration', 'Meals', 'Reminders', 'General'],
+    enum: ['Hydration', 'Meals', 'Reminders', 'Sleep', 'General'],
     default: 'Hydration'
   },
   title: { 
