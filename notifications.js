@@ -42,7 +42,7 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
         notification.actionTaken = userAction;
 
         // HANDLE POSITIVE RESPONSES ('yes', 'yes-water', 'yes-food')
-        if (['yes', 'yes-water', 'yes-food'].includes(userAction)) {
+        if (['yes', 'yes-water', 'yes-food', 'start-sleep', 'wake-up'].includes(userAction)) {
             notification.status = 'Completed';
             notification.snoozedUntil = null;
             await notification.save();
@@ -50,6 +50,7 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
             return res.status(200).json({ 
                 success: true, 
                 message: "Response recorded as Completed!", 
+                action: userAction,
                 notification 
             });
         } 
