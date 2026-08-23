@@ -11,36 +11,49 @@ const activitySchema = new mongoose.Schema({
         type: String, 
         required: true 
     }, // Stored in YYYY-MM-DD format
+
     steps: { 
         type: Number, 
         default: 0 
     },
+
     caloriesBurned: { 
         type: Number, 
         default: 0 
     },
+
     waterLitres: { 
         type: Number, 
         default: 0 
     },
+
     mealCount: { 
         type: Number, 
         default: 0 
     },
+
     calorieIntake: { 
         type: Number, 
         default: 0 
     },
-    
+
+    // Sleep tracking
+    sleepMinutes: {
+        type: Number,
+        default: 0
+    },
+
     // BMI tracking metrics
     bmi: { 
         type: Number, 
         default: null 
     },
+
     height: { 
         type: Number, 
         default: null 
     },
+
     weight: { 
         type: Number, 
         default: null 
