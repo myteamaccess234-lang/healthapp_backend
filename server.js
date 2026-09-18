@@ -33,7 +33,7 @@ const activityRouter = require('./activityroutes');
 const bmiRouter = require('./bmiroutes');
 const notificationRouter = require('./notifications');
 const pushRouter = require('./pushRoutes');
-const dietplanRouter = require('./dietplanRoutes'); // <-- 1. ADDED YOUR NEW ROUTER HERE
+const dietplanRouter = require('./dietplanRoutes'); // <-- Registered your diet plan router
 
 // ============================================================
 // EXPRESS APP
@@ -322,7 +322,7 @@ app.use('/api/notifications', notificationRouter);
 
 app.use('/api/push', pushRouter);
 
-app.use('/api/diet-plan', dietplanRouter); // <-- 2. REGISTERED YOUR NEW ROUTE HERE
+app.use('/api/diet-plan', dietplanRouter); // <-- Registered your diet-plan router
 
 // ============================================================
 // BACKGROUND SNOOZE PROCESSOR
@@ -641,48 +641,36 @@ cron.schedule(
 );
 
 // ============================================================
-// MONGODB CONNECTION
+// MONGODB CONNECTION & SERVER START
 // ============================================================
 
 const MONGO_URI =
     process.env.MONGO_URI ||
     process.env.MONGODB_URI;
 
-if (!MONGO_URI) {
+const PORT = process.env.PORT || 5000;
 
+if (!MONGO_URI) {
     console.error(
         'CRITICAL ERROR: MONGO_URI environment variable is missing!'
     );
-
 } else {
-
     mongoose
         .connect(MONGO_URI)
         .then(() => {
-            console.log(
-                '>>> MongoDB Connected Successfully'
-            );
+            console.log('>>> MongoDB Connected Successfully');
+            
+            // Start server only after database connection is secured
+            app.listen(PORT, () => {
+                console.log(
+                    `>>> Server is live and listening on port ${PORT}`
+                );
+            });
         })
         .catch((err) => {
-
             console.error(
                 '>>> MongoDB Connection Error:',
                 err.message
             );
         });
 }
-
-// ============================================================
-// SERVER START
-// ============================================================
-
-const PORT =
-    process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-
-    console.log(
-        `>>> Server is live and listening on port ${PORT}`
-    );
-
-});
