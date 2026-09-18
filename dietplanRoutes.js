@@ -2,25 +2,25 @@ const express = require('express');
 const router = express.Router();
 const DietPlan = require('./dietplanModel');
 
-// GET diet plan based on age, category, and variant
+// GET diet plan based on age and category
+// Example: /api/dietplans?age=51&category=underweight
 router.get('/', async (req, res) => {
   try {
-    const { age, category, variant } = req.query;
-
-    const plan = await DietPlan.findOne({
-      age: Number(age),
-      category: category.toLowerCase(),
-      variant: Number(variant || 1)
-    });
-
+    const { age, category } = req.query;
+    
+    const plan = await DietPlan.findOne({ age: Number(age) });
     if (!plan) {
-      return res.status(404).json({ error: "Diet plan not found." });
+      return res.status(404).json({ error: 'Diet plan not found for this age group.' });
     }
 
-    res.json(plan);
+    const categoryData = plan.categories[category];
+    if (!categoryData) {
+      return res.status(404).json({ error: 'Invalid category specified.' });
+    }
+
+    res.status(200).json(categoryData);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error while fetching diet plan" });
+    res.status(500).json({ error: err.message });
   }
 });
 
