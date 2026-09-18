@@ -33,6 +33,7 @@ const activityRouter = require('./activityroutes');
 const bmiRouter = require('./bmiroutes');
 const notificationRouter = require('./notifications');
 const pushRouter = require('./pushRoutes');
+const dietplanRouter = require('./dietplanRoutes'); // <-- 1. ADDED YOUR NEW ROUTER HERE
 
 // ============================================================
 // EXPRESS APP
@@ -320,6 +321,8 @@ app.use('/api/bmi', bmiRouter);
 app.use('/api/notifications', notificationRouter);
 
 app.use('/api/push', pushRouter);
+
+app.use('/api/diet-plan', dietplanRouter); // <-- 2. REGISTERED YOUR NEW ROUTE HERE
 
 // ============================================================
 // BACKGROUND SNOOZE PROCESSOR
