@@ -1322,6 +1322,170 @@ const dietPlansData = [
     }
   },
   {
+    age: 23,
+    categories: {
+      underweight: {
+        portions: "1 1/2 - 2 cups",
+        dietPlans: {
+          plan1: {
+            description: "Wednesday & Sunday Non-Veg",
+            days: {
+              Monday: { breakfast: "Bottle Gourd Handvo 1 1/2-2 cups", lunch: "Cluster Beans Peanut Curry with Rice 1 1/2-2 cups", snack: "Murmura Black Chana Chaat 30-40 g/200-250 ml", dinner: "Bajra Ambli with Curd 1 1/2-2 cups" },
+              Tuesday: { breakfast: "Bajra Thalipeeth 1 1/2-2 cups", lunch: "Potato Beans Curry with Roti 1 1/2-2 cups", snack: "Guava Peanut Chaat 30-40 g/200-250 ml", dinner: "Methi Besan Cheela with Curd 1 1/2-2 cups" },
+              Wednesday: { breakfast: "Carrot Besan Cheela 1 1/2-2 cups", lunch: "Chicken Tawa Ginger Fry 150 g non-veg", snack: "Roasted Peanut Jaggery Mix 30-40 g/200-250 ml", dinner: "Ragi Thalipeeth with Dal 1 1/2-2 cups" },
+              Thursday: { breakfast: "Ragi Kanji with Buttermilk 1 1/2-2 cups", lunch: "Dill Leaves Curry with Roti 1 1/2-2 cups", snack: "Papaya Peanut Chaat 30-40 g/200-250 ml", dinner: "Methi Handvo with Chutney 1 1/2-2 cups" },
+              Friday: { breakfast: "Beetroot Roti with Curd 1 1/2-2 cups", lunch: "Cabbage Chana Dal Curry with Rice 1 1/2-2 cups", snack: "Murmura Peanut Chaat 30-40 g/200-250 ml", dinner: "Moong Dal Dhokla with Chutney 1 1/2-2 cups" },
+              Saturday: { breakfast: "Sweet Potato Roti 1 1/2-2 cups", lunch: "Potato Beans Curry with Rice 1 1/2-2 cups", snack: "Peanut Sundal 30-40 g/200-250 ml", dinner: "Carrot Peas Masala with Phulka 1 1/2-2 cups" },
+              Sunday: { breakfast: "Jowar Kanji with Curd 1 1/2-2 cups", lunch: "Chicken Pan Fry 150 g non-veg", snack: "Ragi Buttermilk 30-40 g/200-250 ml", dinner: "Green Peas Roti with Curd 1 1/2-2 cups" }
+            }
+          },
+          plan2: {
+            description: "Wednesday & Sunday Non-Veg",
+            days: {
+              Monday: { breakfast: "Leftover Rice Paniyaram 1 1/2-2 cups", lunch: "Cauliflower Peas Masala with Rice 1 1/2-2 cups", snack: "Homemade Corn Chivda 30-40 g/200-250 ml", dinner: "White Pea Curry with Phulka 1 1/2-2 cups" },
+              Tuesday: { breakfast: "Sattu Vegetable Roti 1 1/2-2 cups", lunch: "Lobia Curry with Roti 1 1/2-2 cups", snack: "Corn Peanut Sundal 30-40 g/200-250 ml", dinner: "Ragi Kozhukattai with Chutney 1 1/2-2 cups" },
+              Wednesday: { breakfast: "Ragi Sevai Upma 1 1/2-2 cups", lunch: "Fish Ginger Garlic Fry 150 g non-veg", snack: "Green Gram Chaat 30-40 g/200-250 ml", dinner: "Palak Dhokla with Chutney 1 1/2-2 cups" },
+              Thursday: { breakfast: "Onion Thalipeeth 1 1/2-2 cups", lunch: "Broad Beans Masala with Roti 1 1/2-2 cups", snack: "Boiled Groundnut Salad 30-40 g/200-250 ml", dinner: "Millet Vegetable Pancake with Curd 1 1/2-2 cups" },
+              Friday: { breakfast: "Bajra Malt with Jaggery 1 1/2-2 cups", lunch: "Raw Mango Dal with Rice 1 1/2-2 cups", snack: "Sattu Buttermilk 30-40 g/200-250 ml", dinner: "Chana Dal Cheela with Chutney 1 1/2-2 cups" },
+              Saturday: { breakfast: "Methi Missi Roti 1 1/2-2 cups", lunch: "Masoor Dal with Methi 1 1/2-2 cups", snack: "Roasted Sweet Corn 30-40 g/200-250 ml", dinner: "Mixed Dal Cheela with Curd 1 1/2-2 cups" },
+              Sunday: { breakfast: "Rice Flour Vegetable Pancake 1 1/2-2 cups", lunch: "Prawn Coconut Curry 150 g non-veg", snack: "Beetroot Peanut Chaat 30-40 g/200-250 ml", dinner: "Bajra Rotti with Dal 1 1/2-2 cups" }
+            }
+          },
+          plan3: {
+            description: "Wednesday & Sunday Non-Veg",
+            days: {
+              Monday: { breakfast: "Ragi Kozhukattai 1 1/2-2 cups", lunch: "Cabbage Moong Curry with Roti 1 1/2-2 cups", snack: "Puffed Rice Chikki 30-40 g/200-250 ml", dinner: "Vegetable Sevai with Chana Dal 1 1/2-2 cups" },
+              Tuesday: { breakfast: "Boiled Yam with Curd 1 1/2-2 cups", lunch: "Methi Peas Curry with Roti 1 1/2-2 cups", snack: "Banana Ragi Balls 30-40 g/200-250 ml", dinner: "Ammini Kozhukattai with Vegetables 1 1/2-2 cups" },
+              Wednesday: { breakfast: "Carrot Muthia 1 1/2-2 cups", lunch: "Prawn Tamarind Curry 150 g non-veg", snack: "Sattu Jaggery Balls 30-40 g/200-250 ml", dinner: "Ragi Vegetable Pancake with Curd 1 1/2-2 cups" },
+              Thursday: { breakfast: "Ragi Ambli with Jaggery 1 1/2-2 cups", lunch: "Cowpea Curry with Rice 1 1/2-2 cups", snack: "Homemade Popcorn with Peanuts 30-40 g/200-250 ml", dinner: "Sweet Potato Peas Curry with Phulka 1 1/2-2 cups" },
+              Friday: { breakfast: "Carrot Roti with Curd 1 1/2-2 cups", lunch: "Broad Beans Dal Curry with Rice 1 1/2-2 cups", snack: "Bajra Malt Drink 30-40 g/200-250 ml", dinner: "Vegetable Adai with Curd 1 1/2-2 cups" },
+              Saturday: { breakfast: "Onion Adai 1 1/2-2 cups", lunch: "Sattu Curry with Rice 1 1/2-2 cups", snack: "Roasted Gram Balls 30-40 g/200-250 ml", dinner: "Black-Eyed Pea Curry with Roti 1 1/2-2 cups" },
+              Sunday: { breakfast: "Dudhi Muthia 1 1/2-2 cups", lunch: "Chicken Dry Sesame Roast 150 g non-veg", snack: "Boiled Yam Chaat 30-40 g/200-250 ml", dinner: "Vegetable Thalipeeth with Curd 1 1/2-2 cups" }
+            }
+          },
+          plan4: {
+            description: "Wednesday & Sunday Non-Veg",
+            days: {
+              Monday: { breakfast: "Ragi Dhokla 1 1/2-2 cups", lunch: "Stuffed Tindora with Roti 1 1/2-2 cups", snack: "Ragi Banana Balls 30-40 g/200-250 ml", dinner: "Akki Rotti with Curd 1 1/2-2 cups" },
+              Tuesday: { breakfast: "Methi Handvo 1 1/2-2 cups", lunch: "Green Gram Masala with Rice 1 1/2-2 cups", snack: "Roasted Black Chana with Lemon 30-40 g/200-250 ml", dinner: "Vegetable Rice Kozhukattai 1 1/2-2 cups" },
+              Wednesday: { breakfast: "Jowar Rotti with Onion Chutney 1 1/2-2 cups", lunch: "Chicken Ginger Coriander Roast 150 g non-veg", snack: "Peanut Jaggery Ladoo 30-40 g/200-250 ml", dinner: "Ragi Kanji with Vegetable Curry 1 1/2-2 cups" },
+              Thursday: { breakfast: "Palak Missi Roti 1 1/2-2 cups", lunch: "Stuffed Brinjal with Roti 1 1/2-2 cups", snack: "Puffed Rice Peanut Mixture 30-40 g/200-250 ml", dinner: "Jowar Vegetable Pancake with Chutney 1 1/2-2 cups" },
+              Friday: { breakfast: "Jowar Methi Roti 1 1/2-2 cups", lunch: "Dal with Carrot and Beans 1 1/2-2 cups", snack: "Papaya Coconut Bowl 30-40 g/200-250 ml", dinner: "Methi Adai with Curd 1 1/2-2 cups" },
+              Saturday: { breakfast: "Papaya Curd Bowl 1 1/2-2 cups", lunch: "White Peas Masala with Roti 1 1/2-2 cups", snack: "Ragi Peanut Chikki 30-40 g/200-250 ml", dinner: "Sattu Roti with Dal 1 1/2-2 cups" },
+              Sunday: { breakfast: "Methi Muthia 1 1/2-2 cups", lunch: "Chicken Village-Style Fry 150 g non-veg", snack: "Peanut Chikki 30-40 g/200-250 ml", dinner: "Stuffed Bhindi with Roti 1 1/2-2 cups" }
+            }
+          }
+        }
+      },
+      normal: {
+        portions: "1 - 1 1/2 cups",
+        dietPlans: {
+          plan1: {
+            description: "Wednesday & Sunday Non-Veg",
+            days: {
+              Monday: { breakfast: "Besan Dhokla 1-1 1/2 cups", lunch: "Kala Vatana Usal with Roti 1-1 1/2 cups", snack: "Puffed Rice Chana Mixture 25-30 g/200 ml", dinner: "Broad Beans Dal Curry with Phulka 1-1 1/2 cups" },
+              Tuesday: { breakfast: "Seasonal Fruit with Roasted Chana 1-1 1/2 cups", lunch: "Carrot Moong Curry with Roti 1-1 1/2 cups", snack: "Jowar Chikki 25-30 g/200 ml", dinner: "Methi Missi Roti with Dal 1-1 1/2 cups" },
+              Wednesday: { breakfast: "Sweet Potato with Curd and Peanuts 1-1 1/2 cups", lunch: "Chicken Methi Garlic Roast 120 g non-veg", snack: "Black Chana Chaat with Lemon 25-30 g/200 ml", dinner: "Ragi Ambli with Roti 1-1 1/2 cups" },
+              Thursday: { breakfast: "Ammini Kozhukattai 1-1 1/2 cups", lunch: "Spinach Chana Curry with Roti 1-1 1/2 cups", snack: "Coconut Jaggery Ladoo 25-30 g/200 ml", dinner: "Palak Missi Roti with Curd 1-1 1/2 cups" },
+              Friday: { breakfast: "Ragi Malt with Jaggery 1-1 1/2 cups", lunch: "Peas Potato Curry with Rice 1-1 1/2 cups", snack: "Roasted Cowpeas 25-30 g/200 ml", dinner: "Jowar Rotti with Dal 1-1 1/2 cups" },
+              Saturday: { breakfast: "Banana with Roasted Peanuts 1-1 1/2 cups", lunch: "Spinach Corn Curry with Rice 1-1 1/2 cups", snack: "Raw Banana Chaat 25-30 g/200 ml", dinner: "Masoor Dal Cheela with Chutney 1-1 1/2 cups" },
+              Sunday: { breakfast: "Masoor Dal Cheela 1-1 1/2 cups", lunch: "Fish Curry Leaf Fry 120 g non-veg", snack: "Banana Sattu Shake 25-30 g/200 ml", dinner: "Bajra Thalipeeth with Curd 1-1 1/2 cups" }
+            }
+          },
+          plan2: {
+            description: "Wednesday & Sunday Non-Veg",
+            days: {
+              Monday: { breakfast: "Millet Vegetable Pancake 1-1 1/2 cups", lunch: "Broad Beans Masala with Rice 1-1 1/2 cups", snack: "Homemade Peanut Bar 25-30 g/200 ml", dinner: "Vegetable Handvo with Curd 1-1 1/2 cups" },
+              Tuesday: { breakfast: "Jowar Malt with Milk 1-1 1/2 cups", lunch: "Green Gram Masala with Roti 1-1 1/2 cups", snack: "Roasted Chana Ladoo 25-30 g/200 ml", dinner: "Carrot Besan Cheela with Chutney 1-1 1/2 cups" },
+              Wednesday: { breakfast: "Banana Ragi Pancake 1-1 1/2 cups", lunch: "Fish Pepper Roast 120 g non-veg", snack: "White Peas Sundal 25-30 g/200 ml", dinner: "Tindora Peanut Curry with Roti 1-1 1/2 cups" },
+              Thursday: { breakfast: "Methi Akki Rotti 1-1 1/2 cups", lunch: "Raw Banana Masala with Roti 1-1 1/2 cups", snack: "Papaya Lassi 25-30 g/200 ml", dinner: "Sweet Potato Roti with Curd 1-1 1/2 cups" },
+              Friday: { breakfast: "Banana Jowar Pancake 1-1 1/2 cups", lunch: "Gujarati Dal with Rice 1-1 1/2 cups", snack: "Jeera Buttermilk 25-30 g/200 ml", dinner: "Vegetable Muthia with Curd 1-1 1/2 cups" },
+              Saturday: { breakfast: "Ragi Banana Malt 1-1 1/2 cups", lunch: "Chana Usal with Bhakri 1-1 1/2 cups", snack: "Cowpea Sundal 25-30 g/200 ml", dinner: "Jowar Muthia with Dal 1-1 1/2 cups" },
+              Sunday: { breakfast: "Moong Dal Dhokla 1-1 1/2 cups", lunch: "Chicken Coconut Masala Fry 120 g non-veg", snack: "Jaggery Ragi Milk 25-30 g/200 ml", dinner: "Moong Dal Handvo 1-1 1/2 cups" }
+            }
+          },
+          plan3: {
+            description: "Wednesday & Sunday Non-Veg",
+            days: {
+              Monday: { breakfast: "Rava Kichadi with Peanuts 1-1 1/2 cups", lunch: "Matki Usal with Bhakri 1-1 1/2 cups", snack: "Sattu Jaggery Ladoo 25-30 g/200 ml", dinner: "Bharli Vangi with Bhakri 1-1 1/2 cups" },
+              Tuesday: { breakfast: "Moong Dal Roti 1-1 1/2 cups", lunch: "Cluster Beans Dal Curry with Roti 1-1 1/2 cups", snack: "Dry Roasted Corn 25-30 g/200 ml", dinner: "Mixed Dal Adai with Curd 1-1 1/2 cups" },
+              Wednesday: { breakfast: "Vegetable Handvo 1-1 1/2 cups", lunch: "Fish Coriander Fry 120 g non-veg", snack: "Curd Banana Jaggery Bowl 25-30 g/200 ml", dinner: "Cauliflower Methi Curry with Phulka 1-1 1/2 cups" },
+              Thursday: { breakfast: "Jowar Ambli 1-1 1/2 cups", lunch: "Cowpea Masala with Roti 1-1 1/2 cups", snack: "Ragi Peanut Ladoo 25-30 g/200 ml", dinner: "Khaman Dhokla with Curd 1-1 1/2 cups" },
+              Friday: { breakfast: "Onion Besan Cheela 1-1 1/2 cups", lunch: "Drumstick Leaves Dal with Roti 1-1 1/2 cups", snack: "White Pea Chaat 25-30 g/200 ml", dinner: "Yam Pepper Curry with Roti 1-1 1/2 cups" },
+              Saturday: { breakfast: "Lemon Sevai with Peanuts 1-1 1/2 cups", lunch: "Beetroot Coconut Curry with Rice 1-1 1/2 cups", snack: "Plain Homemade Lassi 25-30 g/200 ml", dinner: "Jowar Ambli with Roti 1-1 1/2 cups" },
+              Sunday: { breakfast: "Palak Dhokla 1-1 1/2 cups", lunch: "Chicken Andhra Pepper Roast 120 g non-veg", snack: "Banana Sesame Chaat 25-30 g/200 ml", dinner: "Ragi Rotti with Curd 1-1 1/2 cups" }
+            }
+          },
+          plan4: {
+            description: "Wednesday & Sunday Non-Veg",
+            days: {
+              Monday: { breakfast: "Guava Curd Bowl 1-1 1/2 cups", lunch: "Carrot Peas Masala with Rice 1-1 1/2 cups", snack: "Homemade Poha Chivda 25-30 g/200 ml", dinner: "Peas Usal with Chapati 1-1 1/2 cups" },
+              Tuesday: { breakfast: "Rice Kanji with Curd 1-1 1/2 cups", lunch: "Amaranth Dal with Roti 1-1 1/2 cups", snack: "Cucumber Roasted Chana Chaat 25-30 g/200 ml", dinner: "Bottle Gourd Handvo with Curd 1-1 1/2 cups" },
+              Wednesday: { breakfast: "Jowar Muthia 1-1 1/2 cups", lunch: "Chicken Telangana Fry 120 g non-veg", snack: "Boiled Peanut Chaat 25-30 g/200 ml", dinner: "Ragi Dhokla with Curd 1-1 1/2 cups" },
+              Thursday: { breakfast: "Banana Curd Bowl with Jaggery 1-1 1/2 cups", lunch: "Gongura Pappu with Rice 1-1 1/2 cups", snack: "Banana Ragi Shake 25-30 g/200 ml", dinner: "Ragi Sevai Vegetable Bowl 1-1 1/2 cups" },
+              Friday: { breakfast: "Methi Adai 1-1 1/2 cups", lunch: "Sweet Potato Peas Curry with Rice 1-1 1/2 cups", snack: "Sweet Potato Sesame Balls 25-30 g/200 ml", dinner: "Rava Vegetable Kichadi 1-1 1/2 cups" },
+              Saturday: { breakfast: "Tomato-Free Vegetable Adai 1-1 1/2 cups", lunch: "Sprouted Moong Curry with Roti 1-1 1/2 cups", snack: "Seasonal Fruit Roasted Chana Bowl 25-30 g/200 ml", dinner: "Jowar Malt with Vegetable Curry 1-1 1/2 cups" },
+              Sunday: { breakfast: "Rice Sevai Vegetable 1-1 1/2 cups", lunch: "Chicken Onion Fry 120 g non-veg", snack: "Green Gram Sundal 25-30 g/200 ml", dinner: "Rice Sevai Vegetable Bowl 1-1 1/2 cups" }
+            }
+          }
+        }
+      },
+      overweight: {
+        portions: "3/4 - 1 cup",
+        dietPlans: {
+          plan1: {
+            description: "Wednesday & Sunday Non-Veg",
+            days: {
+              Monday: { breakfast: "Moong Dal Paniyaram 3/4-1 cup", lunch: "Green Peas Usal with Roti 3/4-1 cup", snack: "Homemade Murmura Chaat 15-25 g/150 ml", dinner: "Cabbage Besan Cheela with Chutney 3/4-1 cup" },
+              Tuesday: { breakfast: "Mixed Dal Adai 3/4-1 cup", lunch: "Bengali Masoor Dal with Rice 3/4-1 cup", snack: "Homemade Ragi Savoury Balls 15-25 g/150 ml", dinner: "Onion Adai with Chutney 3/4-1 cup" },
+              Wednesday: { breakfast: "Palak Besan Cheela 3/4-1 cup", lunch: "Fish Green Masala Fry 90-100 g non-veg", snack: "Homemade Jowar Savoury Balls 15-25 g/150 ml", dinner: "Cabbage Chana Dal Curry with Roti 3/4-1 cup" },
+              Thursday: { breakfast: "Ajwain Missi Roti 3/4-1 cup", lunch: "Toor Dal with Raw Banana 3/4-1 cup", snack: "Horse Gram Sundal 15-25 g/150 ml", dinner: "Jowar Kanji with Dal 3/4-1 cup" },
+              Friday: { breakfast: "Vegetable Adai 3/4-1 cup", lunch: "Cauliflower Dal Curry with Roti 3/4-1 cup", snack: "Boiled Corn with Lemon 15-25 g/150 ml", dinner: "Green Peas Muthia with Curd 3/4-1 cup" },
+              Saturday: { breakfast: "Cabbage Besan Cheela 3/4-1 cup", lunch: "Maharashtrian Amti with Rice 3/4-1 cup", snack: "Black-Eyed Pea Sundal 15-25 g/150 ml", dinner: "Cowpea Curry with Ragi Roti 3/4-1 cup" },
+              Sunday: { breakfast: "Ragi Vegetable Roti 3/4-1 cup", lunch: "Chicken Green Chilli Fry 90-100 g non-veg", snack: "Banana Lassi 15-25 g/150 ml", dinner: "Raw Banana Masala with Phulka 3/4-1 cup" }
+            }
+          },
+          plan2: {
+            description: "Wednesday & Sunday Non-Veg",
+            days: {
+              Monday: { breakfast: "Khaman Dhokla 3/4-1 cup", lunch: "Methi Corn Curry with Rice 3/4-1 cup", snack: "Boiled Chana Chaat with Onion 15-25 g/150 ml", dinner: "Dudhi Muthia with Curd 3/4-1 cup" },
+              Tuesday: { breakfast: "Chana Dal Cheela 3/4-1 cup", lunch: "Moong Dal with Sweet Potato 3/4-1 cup", snack: "Lobia Chaat 15-25 g/150 ml", dinner: "Carrot Muthia with Dal 3/4-1 cup" },
+              Wednesday: { breakfast: "Coconut Sevai with Dal Chutney 3/4-1 cup", lunch: "Fish Mangalorean Curry 90-100 g non-veg", snack: "Roasted Corn Peanut Mix 15-25 g/150 ml", dinner: "Rice Kanji with Dal 3/4-1 cup" },
+              Thursday: { breakfast: "Ragi Rotti with Chutney 3/4-1 cup", lunch: "Chayote Dal Curry with Roti 3/4-1 cup", snack: "Curd Sweet Potato Bowl 15-25 g/150 ml", dinner: "Sattu Vegetable Roti with Curd 3/4-1 cup" },
+              Friday: { breakfast: "Sattu Cheela 3/4-1 cup", lunch: "Amaranth Leaves Curry with Rice 3/4-1 cup", snack: "Roasted Peanuts with Curry Leaves 15-25 g/150 ml", dinner: "Green Gram Curry with Jowar Roti 3/4-1 cup" },
+              Saturday: { breakfast: "Chana Dal Roti 3/4-1 cup", lunch: "Sattu Curry with Roti 3/4-1 cup", snack: "Sesame Jaggery Ladoo 15-25 g/150 ml", dinner: "Sattu Curry with Phulka 3/4-1 cup" },
+              Sunday: { breakfast: "Green Peas Roti 3/4-1 cup", lunch: "Chicken Pepper Onion Roast 90-100 g non-veg", snack: "Roasted Chana Chikki 15-25 g/150 ml", dinner: "Aval Vegetable Kichadi 3/4-1 cup" }
+            }
+          },
+          plan3: {
+            description: "Wednesday & Sunday Non-Veg",
+            days: {
+              Monday: { breakfast: "Mixed Dal Cheela 3/4-1 cup", lunch: "Tindora Peanut Curry with Rice 3/4-1 cup", snack: "Black Chana Sundal 15-25 g/150 ml", dinner: "Besan Dhokla with Curd 3/4-1 cup" },
+              Tuesday: { breakfast: "Ragi Paniyaram 3/4-1 cup", lunch: "Chana Dal with Spinach 3/4-1 cup", snack: "Guava Jaggery Bowl 15-25 g/150 ml", dinner: "Carrot Roti with Dal 3/4-1 cup" },
+              Wednesday: { breakfast: "Drumstick Leaves Adai 3/4-1 cup", lunch: "Chicken Dry Pudina Roast 90-100 g non-veg", snack: "Murmura Onion Chaat 15-25 g/150 ml", dinner: "Radish Roti with Dal 3/4-1 cup" },
+              Thursday: { breakfast: "Urad Dal Cheela 3/4-1 cup", lunch: "Drumstick Leaves Curry with Rice 3/4-1 cup", snack: "Sweet Potato Peanut Chaat 15-25 g/150 ml", dinner: "Onion Besan Cheela with Curd 3/4-1 cup" },
+              Friday: { breakfast: "Methi Thalipeeth 3/4-1 cup", lunch: "White Peas Curry with Rice 3/4-1 cup", snack: "Sesame Chikki 15-25 g/150 ml", dinner: "Palak Besan Cheela with Curd 3/4-1 cup" },
+              Saturday: { breakfast: "Ragi Vegetable Pancake 3/4-1 cup", lunch: "Yam Pepper Curry with Rice 3/4-1 cup", snack: "Roasted Bengal Gram with Onion 15-25 g/150 ml", dinner: "Onion Thalipeeth with Curd 3/4-1 cup" },
+              Sunday: { breakfast: "Rava Paniyaram 3/4-1 cup", lunch: "Prawn Gongura Curry 90-100 g non-veg", snack: "Ragi Puffed Grain Chaat 15-25 g/150 ml", dinner: "Ragi Malt with Roti and Dal 3/4-1 cup" }
+            }
+          },
+          plan4: {
+            description: "Wednesday & Sunday Non-Veg",
+            days: {
+              Monday: { breakfast: "Ragi Thalipeeth 3/4-1 cup", lunch: "Carrot Peas Masala with Roti 3/4-1 cup", snack: "Ragi Jaggery Ladoo 15-25 g/150 ml", dinner: "Methi Muthia with Dal 3/4-1 cup" },
+              Tuesday: { breakfast: "Bajra Methi Roti 3/4-1 cup", lunch: "Lobia Curry with Rice 3/4-1 cup", snack: "Ginger Buttermilk 15-25 g/150 ml", dinner: "Chayote Moong Curry with Roti 3/4-1 cup" },
+              Wednesday: { breakfast: "Vegetable Muthia 3/4-1 cup", lunch: "Chicken Tawa Garlic Fry 90-100 g non-veg", snack: "Jowar Malt Drink 15-25 g/150 ml", dinner: "Moong Dal Roti with Vegetable Curry 3/4-1 cup" },
+              Thursday: { breakfast: "Akki Rotti with Onion Chutney 3/4-1 cup", lunch: "Tindora Sesame Curry with Roti 3/4-1 cup", snack: "Roasted Chana Jaggery Mix 15-25 g/150 ml", dinner: "Chana Dal Roti with Curd 3/4-1 cup" },
+              Friday: { breakfast: "Vegetable Paniyaram 3/4-1 cup", lunch: "Black-Eyed Pea Curry with Rice 3/4-1 cup", snack: "Peanut Poha Chivda 15-25 g/150 ml", dinner: "Urad Dal Cheela with Curd 3/4-1 cup" },
+              Saturday: { breakfast: "Radish Roti with Curd 3/4-1 cup", lunch: "Potato Peas Curry with Rice 3/4-1 cup", snack: "Curd Roasted Chana Bowl 15-25 g/150 ml", dinner: "Sattu Cheela with Curd 3/4-1 cup" },
+              Sunday: { breakfast: "Onion Missi Roti 3/4-1 cup", lunch: "Chicken Methi Pepper Fry 90-100 g non-veg", snack: "Jaggery Lassi 15-25 g/150 ml", dinner: "Ajwain Missi Roti with Dal 3/4-1 cup" }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
     age: 24,
     categories: {
       underweight: {
