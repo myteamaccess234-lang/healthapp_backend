@@ -9969,25 +9969,48 @@ const dietPlansData = [
         }
       }
     }
-  }
+   }
 ];
+
 async function seedDB() {
   try {
     await mongoose.connect(MONGO_URI);
     console.log('Database connected for seeding...');
 
-    // Clear existing diet plans to avoid duplicates if run multiple times
     await DietPlan.deleteMany({});
     console.log('Old diet plans cleared.');
 
-    // Insert all documents at once
-    await DietPlan.insertMany(dietPlansData);
+    // Merge duplicate age entries without changing diet-plan content
+    const mergedDietPlans = Object.values(
+      dietPlansData.reduce((acc, item) => {
+        if (!acc[item.age]) {
+          acc[item.age] = {
+            ...item,
+            categories: { ...(item.categories || {}) }
+          };
+        } else {
+          for (const [category, data] of Object.entries(item.categories || {})) {
+            if (!acc[item.age].categories[category]) {
+              acc[item.age].categories[category] = data;
+            }
+          }
+        }
+
+        return acc;
+      }, {})
+    );
+
+    console.log(`Preparing ${mergedDietPlans.length} age-group documents...`);
+
+    await DietPlan.insertMany(mergedDietPlans);
+
     console.log('Successfully seeded all age group diet plans into MongoDB Atlas!');
 
-    mongoose.connection.close();
+    await mongoose.connection.close();
   } catch (err) {
     console.error('Error seeding data:', err);
-    mongoose.connection.close();
+    await mongoose.connection.close();
+    process.exit(1);
   }
 }
 
