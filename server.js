@@ -446,9 +446,12 @@ cron.schedule(
                 // Avoid creating duplicate sleep reminders
                 // for the same day.
 
-                const today = new Date()
-                    .toISOString()
-                    .split('T')[0];
+                const today = new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'Asia/Kolkata',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }).format(new Date());
 
                 const existing =
                     await Notification.findOne({
@@ -639,6 +642,100 @@ cron.schedule(
         timezone: 'Asia/Kolkata'
     }
 );
+
+// ============================================================
+// FOOD + WATER BACKEND REMINDERS
+//
+// Android native alarms will be the primary trigger in the APK.
+// These server jobs provide the secondary/dual-trigger path when
+// the user has web-push enabled. The notification id is returned
+// to the client so Android can deduplicate the same reminder.
+// ============================================================
+
+async function sendScheduledReminder({ user, title, message, category, key }) {
+    const day = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+
+    const existing = await Notification.findOne({
+        userId: user._id,
+        category,
+        title,
+        message,
+        createdAt: { $gte: new Date(`${day}T00:00:00+05:30`) }
+    });
+
+    if (existing) return;
+
+    const notification = await Notification.create({
+        userId: user._id,
+        category,
+        title,
+        message,
+        isInteractive: true,
+        status: 'Unread'
+    });
+
+    const subscriptions = await Subscription.find({ userId: user._id });
+    const payload = JSON.stringify({
+        title,
+        body: message,
+        id: notification._id.toString(),
+        key,
+        date: day,
+        category,
+        isInteractive: true
+    });
+
+    for (const sub of subscriptions) {
+        try {
+            await webpush.sendNotification(sub, payload);
+        } catch (err) {
+            if (err.statusCode === 404 || err.statusCode === 410) {
+                await Subscription.deleteOne({ endpoint: sub.endpoint });
+            } else {
+                console.error('Scheduled push error:', err.message);
+            }
+        }
+    }
+}
+
+// Meal reminders: breakfast, lunch, dinner.
+cron.schedule('30 8 * * *', async () => {
+    try {
+        for (const user of await User.find({})) {
+            await sendScheduledReminder({ user, title: 'Breakfast Reminder', message: 'Time for breakfast. Have you eaten?', category: 'Meals', key: 'breakfast' });
+        }
+    } catch (err) { console.error('Breakfast scheduler error:', err.message); }
+}, { timezone: 'Asia/Kolkata' });
+
+cron.schedule('0 13 * * *', async () => {
+    try {
+        for (const user of await User.find({})) {
+            await sendScheduledReminder({ user, title: 'Lunch Reminder', message: 'Time for lunch. Have you eaten?', category: 'Meals', key: 'lunch' });
+        }
+    } catch (err) { console.error('Lunch scheduler error:', err.message); }
+}, { timezone: 'Asia/Kolkata' });
+
+cron.schedule('30 20 * * *', async () => {
+    try {
+        for (const user of await User.find({})) {
+            await sendScheduledReminder({ user, title: 'Dinner Reminder', message: 'Time for dinner. Have you eaten?', category: 'Meals', key: 'dinner' });
+        }
+    } catch (err) { console.error('Dinner scheduler error:', err.message); }
+}, { timezone: 'Asia/Kolkata' });
+
+// Water reminders through the day.
+for (const waterTime of ['09:30', '11:30', '15:30', '17:30', '19:30']) {
+    const [hour, minute] = waterTime.split(':');
+    cron.schedule(`${minute} ${hour} * * *`, async () => {
+        try {
+            for (const user of await User.find({})) {
+                await sendScheduledReminder({ user, title: 'Water Reminder', message: 'Time to drink water. Have you had a glass?', category: 'Hydration', key: `water-${hour}-${minute}` });
+            }
+        } catch (err) { console.error(`Water scheduler error (${waterTime}):`, err.message); }
+    }, { timezone: 'Asia/Kolkata' });
+}
 
 // ============================================================
 // MONGODB CONNECTION & SERVER START
