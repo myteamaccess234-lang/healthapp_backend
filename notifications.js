@@ -266,19 +266,39 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
         // continue working.
         // =====================================================
 
-        if (
-            [
-                'yes',
-                'yes-water',
-                'yes-food',
-                'start-sleep',
-                'wake-up'
-            ].includes(userAction)
-        ) {
+        if (['yes-water', 'yes-food'].includes(userAction)) {
+            const today = getIndiaDate();
+            let activity = await Activity.findOne({ userId, date: today });
+
+            if (!activity) {
+                activity = new Activity({ userId, date: today });
+            }
+
+            if (userAction === 'yes-water') {
+                activity.waterLitres = Number((Number(activity.waterLitres || 0) + 0.25).toFixed(2));
+            } else if (userAction === 'yes-food') {
+                activity.mealCount = Number(activity.mealCount || 0) + 1;
+                activity.calorieIntake = Number(activity.calorieIntake || 0) + 500;
+            }
+
+            await activity.save();
 
             notification.status = 'Completed';
             notification.snoozedUntil = null;
+            await notification.save();
 
+            return res.status(200).json({
+                success: true,
+                message: userAction === 'yes-water' ? 'Water intake recorded.' : 'Meal recorded.',
+                action: userAction,
+                activity,
+                notification
+            });
+        }
+
+        if (['yes', 'start-sleep', 'wake-up'].includes(userAction)) {
+            notification.status = 'Completed';
+            notification.snoozedUntil = null;
             await notification.save();
 
             return res.status(200).json({
