@@ -301,7 +301,7 @@ app.get('/health', (req, res) => {
 });
 
 // ============================================================
-// SEND OTP
+// SEND / RESEND OTP
 // ============================================================
 
 app.post('/api/auth/send-otp', async (req, res) => {
@@ -374,6 +374,34 @@ app.post('/api/auth/send-otp', async (req, res) => {
             message:
                 `Email sending failed: ${err.message}`
         });
+    }
+});
+
+// Dedicated Resend OTP route to match frontend calls precisely
+app.post('/api/auth/resend-otp', async (req, res) => {
+    try {
+        let { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ success: false, message: 'Email is required' });
+        }
+        email = email.toLowerCase().trim();
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        user.otp = otp;
+        user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+        await user.save();
+
+        await sendEmailViaGmailAPI(email, otp);
+
+        return res.status(200).json({ success: true, message: 'Resend OTP successful' });
+    } catch (err) {
+        console.error('RESEND OTP ERROR:', err.message);
+        return res.status(500).json({ success: false, message: err.message });
     }
 });
 
@@ -499,326 +527,6 @@ app.use(
 );
 
 // ============================================================
-// SNOOZED NOTIFICATIONS
-// RUN EVERY MINUTE
-// ============================================================
-
-cron.schedule(
-    '* * * * *',
-    async () => {
-        try {
-            const now = new Date();
-
-            const dueNotifications =
-                await Notification.find({
-                    status: 'Snoozed',
-                    snoozedUntil: {
-                        $lte: now
-                    }
-                });
-
-            for (
-                const notification
-                of dueNotifications
-            ) {
-                await sendPushToUser(
-                    notification.userId,
-                    notification
-                );
-
-                notification.status =
-                    'Unread';
-
-                notification.snoozedUntil =
-                    null;
-
-                await notification.save();
-            }
-
-        } catch (err) {
-            console.error(
-                'Snooze processor error:',
-                err.message
-            );
-        }
-    },
-    {
-        timezone: 'Asia/Kolkata'
-    }
-);
-
-// ============================================================
-// BREAKFAST REMINDER
-// 8:30 AM
-// ============================================================
-
-cron.schedule(
-    '30 8 * * *',
-    async () => {
-        try {
-            console.log(
-                '>>> Breakfast reminder started'
-            );
-
-            const users =
-                await User.find({});
-
-            for (const user of users) {
-                await createDailyNotification({
-                    user,
-                    title: 'Breakfast Time',
-                    message:
-                        'Good morning! It is time for your breakfast.',
-                    category: 'Food',
-                    uniqueKey: 'Breakfast Time'
-                });
-            }
-
-        } catch (err) {
-            console.error(
-                'Breakfast scheduler error:',
-                err.message
-            );
-        }
-    },
-    {
-        timezone: 'Asia/Kolkata'
-    }
-);
-
-// ============================================================
-// WATER REMINDERS
-// 9:30 AM
-// 11:30 AM
-// 3:30 PM
-// 5:30 PM
-// 7:30 PM
-// ============================================================
-
-const waterReminderTimes = [
-    {
-        cron: '30 9 * * *',
-        title: 'Water Reminder 9:30 AM'
-    },
-    {
-        cron: '30 11 * * *',
-        title: 'Water Reminder 11:30 AM'
-    },
-    {
-        cron: '30 15 * * *',
-        title: 'Water Reminder 3:30 PM'
-    },
-    {
-        cron: '30 17 * * *',
-        title: 'Water Reminder 5:30 PM'
-    },
-    {
-        cron: '30 19 * * *',
-        title: 'Water Reminder 7:30 PM'
-    }
-];
-
-for (
-    const waterReminder
-    of waterReminderTimes
-) {
-    cron.schedule(
-        waterReminder.cron,
-        async () => {
-            try {
-                console.log(
-                    `>>> ${waterReminder.title} started`
-                );
-
-                const users =
-                    await User.find({});
-
-                for (
-                    const user
-                    of users
-                ) {
-                    await createDailyNotification({
-                        user,
-                        title:
-                            waterReminder.title,
-                        message:
-                            'Time to drink water. Tap the notification and record your water intake.',
-                        category: 'Water',
-                        uniqueKey:
-                            waterReminder.title
-                    });
-                }
-
-            } catch (err) {
-                console.error(
-                    'Water scheduler error:',
-                    err.message
-                );
-            }
-        },
-        {
-            timezone: 'Asia/Kolkata'
-        }
-    );
-}
-
-// ============================================================
-// LUNCH REMINDER
-// 1:00 PM
-// ============================================================
-
-cron.schedule(
-    '0 13 * * *',
-    async () => {
-        try {
-            console.log(
-                '>>> Lunch reminder started'
-            );
-
-            const users =
-                await User.find({});
-
-            for (const user of users) {
-                await createDailyNotification({
-                    user,
-                    title: 'Lunch Time',
-                    message:
-                        'It is lunch time. Remember to record your meal.',
-                    category: 'Food',
-                    uniqueKey: 'Lunch Time'
-                });
-            }
-
-        } catch (err) {
-            console.error(
-                'Lunch scheduler error:',
-                err.message
-            );
-        }
-    },
-    {
-        timezone: 'Asia/Kolkata'
-    }
-);
-
-// ============================================================
-// DINNER REMINDER
-// 8:30 PM
-// ============================================================
-
-cron.schedule(
-    '30 20 * * *',
-    async () => {
-        try {
-            console.log(
-                '>>> Dinner reminder started'
-            );
-
-            const users =
-                await User.find({});
-
-            for (const user of users) {
-                await createDailyNotification({
-                    user,
-                    title: 'Dinner Time',
-                    message:
-                        'It is dinner time. Remember to record your meal.',
-                    category: 'Food',
-                    uniqueKey: 'Dinner Time'
-                });
-            }
-
-        } catch (err) {
-            console.error(
-                'Dinner scheduler error:',
-                err.message
-            );
-        }
-    },
-    {
-        timezone: 'Asia/Kolkata'
-    }
-);
-
-// ============================================================
-// SLEEP REMINDER
-// 10:15 PM
-// ============================================================
-
-cron.schedule(
-    '15 22 * * *',
-    async () => {
-        try {
-            console.log(
-                '>>> Sleep reminder started'
-            );
-
-            const users =
-                await User.find({});
-
-            for (const user of users) {
-                await createDailyNotification({
-                    user,
-                    title: 'Sleep Time',
-                    message:
-                        'It is 10:15 PM. Are you going to sleep?',
-                    category: 'Reminders',
-                    uniqueKey: 'Sleep Time'
-                });
-            }
-
-        } catch (err) {
-            console.error(
-                'Sleep scheduler error:',
-                err.message
-            );
-        }
-    },
-    {
-        timezone: 'Asia/Kolkata'
-    }
-);
-
-// ============================================================
-// WAKE-UP REMINDER
-// 6:45 AM
-// ============================================================
-
-cron.schedule(
-    '45 6 * * *',
-    async () => {
-        try {
-            console.log(
-                '>>> Wake-up reminder started'
-            );
-
-            const users =
-                await User.find({});
-
-            for (const user of users) {
-                await createDailyNotification({
-                    user,
-                    title: 'Good Morning',
-                    message:
-                        'Good morning! Are you awake?',
-                    category: 'Reminders',
-                    uniqueKey: 'Good Morning'
-                });
-            }
-
-        } catch (err) {
-            console.error(
-                'Wake-up scheduler error:',
-                err.message
-            );
-        }
-    },
-    {
-        timezone: 'Asia/Kolkata'
-    }
-);
-
-// ============================================================
 // MONGODB + SERVER
 // ============================================================
 
@@ -852,22 +560,6 @@ mongoose
 
                 console.log(
                     `>>> India Date: ${getIndiaDateString()}`
-                );
-
-                console.log(
-                    '>>> Food reminders: ENABLED'
-                );
-
-                console.log(
-                    '>>> Water reminders: ENABLED'
-                );
-
-                console.log(
-                    '>>> Sleep reminder: ENABLED'
-                );
-
-                console.log(
-                    '>>> Wake-up reminder: ENABLED'
                 );
             }
         );
