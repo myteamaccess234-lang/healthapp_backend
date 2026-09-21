@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const DietPlan = require('./dietplanModel');
@@ -9,10 +8,6 @@ const DietPlan = require('./dietplanModel');
 // 1. Exact age match
 // 2. Nearest available age plan
 // 3. BMI category
-//
-// Example:
-// /api/dietplans?age=51&category=underweight
-// /api/dietplans?age=25&category=normal
 // ============================================================
 
 router.get('/', async (req, res) => {
@@ -71,8 +66,7 @@ router.get('/', async (req, res) => {
         });
 
         // --------------------------------------------------------
-        // If exact age does not exist,
-        // find the closest available age
+        // If exact age does not exist, find closest available age
         // --------------------------------------------------------
 
         if (!plan) {
@@ -135,18 +129,15 @@ router.get('/', async (req, res) => {
         }
 
         // --------------------------------------------------------
-        // Return response
+        // Return response with full compatibility for frontend parsing
         // --------------------------------------------------------
 
         return res.status(200).json({
             success: true,
-
             requestedAge: numericAge,
-
             planAge: plan.age,
-
             category,
-
+            weeks: categoryData.weeks || categoryData,
             dietPlan: categoryData
         });
 
