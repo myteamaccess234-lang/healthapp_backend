@@ -7,434 +7,735 @@ const User = require('./usermodel');
 const authMiddleware = require('./authMiddleware');
 
 /**
- * Helper function to evaluate and unlock achievements cleanly
+ * ============================================================
+ * HELPER: Get current date in India timezone
+ * Returns YYYY-MM-DD
+ * ============================================================
  */
-async function evaluateAchievements(userId, activityData, stepDelta = 0) {
+function getIndiaDate() {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(new Date());
+}
+
+/**
+ * ============================================================
+ * HELPER: Get User ID from JWT
+ * ============================================================
+ */
+function getUserId(req) {
+    return (
+        req.user?.id ||
+        req.user?._id ||
+        req.user?.userId
+    );
+}
+
+/**
+ * ============================================================
+ * HELPER: Evaluate and unlock achievements
+ * ============================================================
+ */
+async function evaluateAchievements(
+    userId,
+    activityData,
+    stepDelta = 0
+) {
     try {
-        let user = await User.findById(userId);
-        if (!user) return;
+        const user = await User.findById(userId);
 
-        if (!user.achievements) user.achievements = {};
+        if (!user) {
+            console.error(
+                'Achievement check failed: User not found'
+            );
+            return;
+        }
 
-        // 1. Logged in & First Day
+        // Make sure achievements object exists
+        if (!user.achievements) {
+            user.achievements = {};
+        }
+
+        // ------------------------------------------------------
+        // 1. Logged In / First Day
+        // ------------------------------------------------------
         user.achievements.loggedIn = true;
         user.achievements.firstDay = true;
 
-        // 2. Hydration Hero (target >= 3.0 Litres)
-        if (activityData.waterLitres >= 3.0) {
+        // ------------------------------------------------------
+        // 2. Hydration Hero
+        // Target: 3 Litres
+        // ------------------------------------------------------
+        if (
+            Number(activityData.waterLitres || 0) >= 3.0
+        ) {
             user.achievements.hydrationHero = true;
         }
 
-        // 3. Meal Hero (mealCount >= 4)
-        if (activityData.mealCount >= 4) {
+        // ------------------------------------------------------
+        // 3. Meal Hero
+        // Target: 4 meals
+        // ------------------------------------------------------
+        if (
+            Number(activityData.mealCount || 0) >= 4
+        ) {
             user.achievements.mealHero = true;
         }
 
-        // 4. 2 Lakh Step Completed (Cumulative lifetime check using step delta)
+        // ------------------------------------------------------
+        // 4. Lifetime Steps
+        // Add ONLY the new step difference.
+        // Prevents duplicate counting.
+        // ------------------------------------------------------
         if (stepDelta > 0) {
-            user.lifetimeSteps = (user.lifetimeSteps || 0) + stepDelta;
+            user.lifetimeSteps =
+                Number(user.lifetimeSteps || 0) +
+                Number(stepDelta);
         }
 
-        if (user.lifetimeSteps >= 200000) {
+        // ------------------------------------------------------
+        // 5. 2 Lakh Steps Achievement
+        // ------------------------------------------------------
+        if (
+            Number(user.lifetimeSteps || 0) >= 200000
+        ) {
             user.achievements.twoLakhSteps = true;
         }
 
-        // 5. All Goals Completed
+        // ------------------------------------------------------
+        // 6. All Daily Goals Completed
+        // ------------------------------------------------------
         if (
-            activityData.steps >= 10000 &&
-            activityData.waterLitres >= 3.0 &&
-            activityData.mealCount >= 4 &&
-            activityData.caloriesBurned >= 500
+            Number(activityData.steps || 0) >= 10000 &&
+            Number(activityData.waterLitres || 0) >= 3.0 &&
+            Number(activityData.mealCount || 0) >= 4 &&
+            Number(activityData.caloriesBurned || 0) >= 500
         ) {
             user.achievements.allGoalsCompleted = true;
         }
 
         await user.save();
-    } catch (err) {
-        console.error("Error evaluating achievements:", err.message);
-    }
-}
-
-// ==============================================================================
-// ROUTES
-// ==============================================================================
-
-// 1. Save or update daily activity log
-// INCLUDES BMI, HEIGHT, WEIGHT, STEPS AND SLEEP
-router.post('/save', authMiddleware, async (req, res) => {
-    try {
-        const {
-            date,
-            steps,
-            caloriesBurned,
-            waterLitres,
-            mealCount,
-            calorieIntake,
-            sleepMinutes,  // SLEEP TRACKING
-            bmi,
-            height,
-            weight
-        } = req.body;
-
-        const userId = req.user?.id || req.user?._id || req.user?.userId;
-
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Unauthorized: User ID missing from token"
-            });
-        }
-
-        const currentDate = date || new Date().toISOString().split('T')[0];
-
-        let activity = await Activity.findOne({
-            userId,
-            date: currentDate
-        });
-
-        let stepDelta = 0;
-
-        // ----------------------------------------------------------------------
-        // EXISTING ACTIVITY → UPDATE
-        // ----------------------------------------------------------------------
-        if (activity) {
-
-            if (steps !== undefined) {
-                const oldSteps = activity.steps || 0;
-                stepDelta = Math.max(0, steps - oldSteps);
-                activity.steps = steps;
-            }
-
-            if (caloriesBurned !== undefined) {
-                activity.caloriesBurned = caloriesBurned;
-            }
-
-            if (waterLitres !== undefined) {
-                activity.waterLitres = waterLitres;
-            }
-
-            if (mealCount !== undefined) {
-                activity.mealCount = mealCount;
-            }
-
-            if (calorieIntake !== undefined) {
-                activity.calorieIntake = calorieIntake;
-            }
-
-            // SAVE SLEEP MINUTES
-            if (sleepMinutes !== undefined) {
-                activity.sleepMinutes = sleepMinutes;
-            }
-
-            // Save BMI metrics if provided
-            if (bmi !== undefined) {
-                activity.bmi = bmi;
-            }
-
-            if (height !== undefined) {
-                activity.height = height;
-            }
-
-            if (weight !== undefined) {
-                activity.weight = weight;
-            }
-
-            await activity.save();
-
-        } else {
-
-            // ------------------------------------------------------------------
-            // NO ACTIVITY FOR TODAY → CREATE NEW RECORD
-            // ------------------------------------------------------------------
-
-            stepDelta = steps || 0;
-
-            activity = new Activity({
-                userId,
-                date: currentDate,
-
-                steps: steps || 0,
-
-                caloriesBurned: caloriesBurned || 0,
-
-                waterLitres: waterLitres || 0,
-
-                mealCount: mealCount || 0,
-
-                calorieIntake: calorieIntake || 0,
-
-                // SAVE SLEEP MINUTES
-                sleepMinutes: sleepMinutes || 0,
-
-                bmi,
-                height,
-                weight
-            });
-
-            await activity.save();
-        }
-
-        // Evaluate achievements automatically with incremental step delta
-        await evaluateAchievements(
-            userId,
-            activity,
-            stepDelta
-        );
-
-        res.status(200).json({
-            success: true,
-            message: "Activity, BMI and sleep data recorded successfully",
-            activity
-        });
 
     } catch (err) {
         console.error(
-            "Server error in /save activity:",
+            'Error evaluating achievements:',
             err.message
         );
-
-        res.status(500).json({
-            success: false,
-            message: err.message
-        });
     }
-});
+}
 
-// ==============================================================================
-// 2. Specialized Route: Native Background Step Sync
-// Screen-Off Hardware Pedometer Sync
-// ==============================================================================
+// ============================================================================
+// 1. SAVE / UPDATE DAILY ACTIVITY
+// Includes:
+// BMI
+// Height
+// Weight
+// Steps
+// Sleep
+// Water
+// Meals
+// Calories
+// ============================================================================
 
-router.post('/sync-steps', authMiddleware, async (req, res) => {
-    try {
-        const {
-            steps,
-            caloriesBurned,
-            date
-        } = req.body;
+router.post(
+    '/save',
+    authMiddleware,
+    async (req, res) => {
+        try {
+            const {
+                date,
+                steps,
+                caloriesBurned,
+                waterLitres,
+                mealCount,
+                calorieIntake,
+                sleepMinutes,
+                bmi,
+                height,
+                weight
+            } = req.body;
 
-        const userId =
-            req.user?.id ||
-            req.user?._id ||
-            req.user?.userId;
+            const userId = getUserId(req);
 
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Unauthorized: User ID missing from token"
+            if (!userId) {
+                return res.status(401).json({
+                    success: false,
+                    message:
+                        'Unauthorized: User ID missing from token'
+                });
+            }
+
+            // Use supplied date only if provided.
+            // Otherwise use India local date.
+            const currentDate =
+                date || getIndiaDate();
+
+            // Find today's activity
+            let activity = await Activity.findOne({
+                userId,
+                date: currentDate
             });
-        }
 
-        if (steps === undefined || steps === null) {
-            return res.status(400).json({
-                success: false,
-                message: "Steps payload is required"
-            });
-        }
+            let stepDelta = 0;
 
-        const currentDate =
-            date ||
-            new Date().toISOString().split('T')[0];
+            // =================================================================
+            // EXISTING ACTIVITY -> UPDATE
+            // =================================================================
 
-        let activity = await Activity.findOne({
-            userId,
-            date: currentDate
-        });
+            if (activity) {
 
-        let stepDelta = 0;
+                // -------------------------------------------------------------
+                // STEPS
+                // Only count NEW steps.
+                // If incoming steps are lower, don't reduce DB count.
+                // -------------------------------------------------------------
+                if (steps !== undefined) {
 
-        if (activity) {
+                    const incomingSteps =
+                        Number(steps);
 
-            const oldSteps = activity.steps || 0;
+                    const oldSteps =
+                        Number(activity.steps || 0);
 
-            // Only update if step count from hardware pedometer
-            // is greater than current DB steps
-            if (steps > oldSteps) {
+                    if (
+                        Number.isFinite(incomingSteps) &&
+                        incomingSteps > oldSteps
+                    ) {
+                        stepDelta =
+                            incomingSteps - oldSteps;
 
-                stepDelta = steps - oldSteps;
-
-                activity.steps = steps;
-
-                // Auto-calculate or update calories burned
-                if (caloriesBurned !== undefined) {
-                    activity.caloriesBurned = caloriesBurned;
-                } else {
-                    activity.caloriesBurned =
-                        Math.floor(steps * 0.04);
+                        activity.steps =
+                            incomingSteps;
+                    }
                 }
+
+                // -------------------------------------------------------------
+                // CALORIES
+                // -------------------------------------------------------------
+                if (
+                    caloriesBurned !== undefined
+                ) {
+                    activity.caloriesBurned =
+                        Number(caloriesBurned) || 0;
+                }
+
+                // -------------------------------------------------------------
+                // WATER
+                // -------------------------------------------------------------
+                if (
+                    waterLitres !== undefined
+                ) {
+                    activity.waterLitres =
+                        Number(waterLitres) || 0;
+                }
+
+                // -------------------------------------------------------------
+                // MEALS
+                // -------------------------------------------------------------
+                if (
+                    mealCount !== undefined
+                ) {
+                    activity.mealCount =
+                        Number(mealCount) || 0;
+                }
+
+                // -------------------------------------------------------------
+                // CALORIE INTAKE
+                // -------------------------------------------------------------
+                if (
+                    calorieIntake !== undefined
+                ) {
+                    activity.calorieIntake =
+                        Number(calorieIntake) || 0;
+                }
+
+                // -------------------------------------------------------------
+                // SLEEP
+                // -------------------------------------------------------------
+                if (
+                    sleepMinutes !== undefined
+                ) {
+                    activity.sleepMinutes =
+                        Number(sleepMinutes) || 0;
+                }
+
+                // -------------------------------------------------------------
+                // BMI
+                // -------------------------------------------------------------
+                if (bmi !== undefined) {
+                    activity.bmi =
+                        Number(bmi);
+                }
+
+                // -------------------------------------------------------------
+                // HEIGHT
+                // -------------------------------------------------------------
+                if (height !== undefined) {
+                    activity.height =
+                        Number(height);
+                }
+
+                // -------------------------------------------------------------
+                // WEIGHT
+                // -------------------------------------------------------------
+                if (weight !== undefined) {
+                    activity.weight =
+                        Number(weight);
+                }
+
+                await activity.save();
+
+            } else {
+
+                // =================================================================
+                // NO ACTIVITY FOR THIS DATE -> CREATE NEW RECORD
+                // =================================================================
+
+                const initialSteps =
+                    steps !== undefined
+                        ? Math.max(0, Number(steps) || 0)
+                        : 0;
+
+                stepDelta = initialSteps;
+
+                activity = new Activity({
+                    userId,
+                    date: currentDate,
+
+                    steps: initialSteps,
+
+                    caloriesBurned:
+                        caloriesBurned !== undefined
+                            ? Number(caloriesBurned) || 0
+                            : 0,
+
+                    waterLitres:
+                        waterLitres !== undefined
+                            ? Number(waterLitres) || 0
+                            : 0,
+
+                    mealCount:
+                        mealCount !== undefined
+                            ? Number(mealCount) || 0
+                            : 0,
+
+                    calorieIntake:
+                        calorieIntake !== undefined
+                            ? Number(calorieIntake) || 0
+                            : 0,
+
+                    sleepMinutes:
+                        sleepMinutes !== undefined
+                            ? Number(sleepMinutes) || 0
+                            : 0,
+
+                    bmi:
+                        bmi !== undefined
+                            ? Number(bmi)
+                            : null,
+
+                    height:
+                        height !== undefined
+                            ? Number(height)
+                            : null,
+
+                    weight:
+                        weight !== undefined
+                            ? Number(weight)
+                            : null
+                });
 
                 await activity.save();
             }
 
-        } else {
+            // =================================================================
+            // ACHIEVEMENTS
+            // Only NEW step difference is added to lifetimeSteps.
+            // =================================================================
 
-            stepDelta = steps;
-
-            activity = new Activity({
-                userId,
-                date: currentDate,
-                steps: steps,
-                caloriesBurned:
-                    caloriesBurned !== undefined
-                        ? caloriesBurned
-                        : Math.floor(steps * 0.04)
-            });
-
-            await activity.save();
-        }
-
-        // Increment lifetime steps and re-check step achievements
-        if (stepDelta > 0) {
             await evaluateAchievements(
                 userId,
                 activity,
                 stepDelta
             );
-        }
 
-        res.status(200).json({
-            success: true,
-            message: "Background steps synced successfully",
-            activity: {
-                date: activity.date,
-                steps: activity.steps,
-                caloriesBurned: activity.caloriesBurned
-            }
-        });
+            return res.status(200).json({
+                success: true,
+                message:
+                    'Activity, BMI and sleep data recorded successfully',
+                activity
+            });
 
-    } catch (err) {
-        console.error(
-            "Server error in /sync-steps:",
-            err.message
-        );
+        } catch (err) {
 
-        res.status(500).json({
-            success: false,
-            message: err.message
-        });
-    }
-});
+            console.error(
+                'Server error in /save activity:',
+                err.message
+            );
 
-// ==============================================================================
-// 3. Fetch activity history for logged-in user
-// ==============================================================================
-
-router.get('/history', authMiddleware, async (req, res) => {
-    try {
-        const userId =
-            req.user?.id ||
-            req.user?._id ||
-            req.user?.userId;
-
-        if (!userId) {
-            return res.status(401).json({
+            return res.status(500).json({
                 success: false,
-                message: "Unauthorized: User ID missing from token"
+                message: err.message
             });
         }
-
-        const activities = await Activity
-            .find({ userId })
-            .sort({ date: -1 });
-
-        res.status(200).json(activities);
-
-    } catch (err) {
-        console.error(
-            "Server error in /history activity:",
-            err.message
-        );
-
-        res.status(500).json({
-            success: false,
-            message: err.message
-        });
     }
-});
+);
 
-// ==============================================================================
-// 4. Dual Quick-Actions from Push Notifications
-// Water & Food
-// ==============================================================================
+// ============================================================================
+// 2. NATIVE BACKGROUND STEP SYNC
+// Used by Android native pedometer / screen-off tracking
+// ============================================================================
 
-router.post('/log-hydration', authMiddleware, async (req, res) => {
-    try {
-        const { action } = req.body;
+router.post(
+    '/sync-steps',
+    authMiddleware,
+    async (req, res) => {
+        try {
+            const {
+                steps,
+                caloriesBurned,
+                date
+            } = req.body;
 
-        const userId =
-            req.user?.id ||
-            req.user?._id ||
-            req.user?.userId;
+            const userId = getUserId(req);
 
-        console.log(
-            `Received push action click '${action}' for User: ${userId}`
-        );
+            if (!userId) {
+                return res.status(401).json({
+                    success: false,
+                    message:
+                        'Unauthorized: User ID missing from token'
+                });
+            }
 
-        const today =
-            new Date().toISOString().split('T')[0];
+            // ---------------------------------------------------------------
+            // Validate steps
+            // ---------------------------------------------------------------
 
-        // Find or create today's activity entry
-        let activity = await Activity.findOne({
-            userId,
-            date: today
-        });
+            if (
+                steps === undefined ||
+                steps === null
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        'Steps payload is required'
+                });
+            }
 
-        if (!activity) {
-            activity = new Activity({
+            const incomingSteps =
+                Number(steps);
+
+            if (
+                !Number.isFinite(incomingSteps) ||
+                incomingSteps < 0
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        'Steps must be a valid non-negative number'
+                });
+            }
+
+            // Use India date
+            const currentDate =
+                date || getIndiaDate();
+
+            // Find today's activity
+            let activity = await Activity.findOne({
                 userId,
-                date: today
+                date: currentDate
+            });
+
+            let stepDelta = 0;
+
+            // =================================================================
+            // EXISTING ACTIVITY
+            // =================================================================
+
+            if (activity) {
+
+                const oldSteps =
+                    Number(activity.steps || 0);
+
+                // -------------------------------------------------------------
+                // Only accept higher hardware step count.
+                // This prevents steps from going backwards.
+                // -------------------------------------------------------------
+
+                if (incomingSteps > oldSteps) {
+
+                    stepDelta =
+                        incomingSteps - oldSteps;
+
+                    activity.steps =
+                        incomingSteps;
+
+                    // ---------------------------------------------------------
+                    // Calories
+                    // Use supplied calories if available.
+                    // Otherwise use basic step estimate.
+                    // ---------------------------------------------------------
+
+                    if (
+                        caloriesBurned !== undefined
+                    ) {
+                        activity.caloriesBurned =
+                            Number(caloriesBurned) || 0;
+                    } else {
+                        activity.caloriesBurned =
+                            Math.floor(
+                                incomingSteps * 0.04
+                            );
+                    }
+
+                    await activity.save();
+                }
+
+            } else {
+
+                // =================================================================
+                // CREATE TODAY'S ACTIVITY
+                // =================================================================
+
+                stepDelta =
+                    incomingSteps;
+
+                activity = new Activity({
+                    userId,
+                    date: currentDate,
+
+                    steps: incomingSteps,
+
+                    caloriesBurned:
+                        caloriesBurned !== undefined
+                            ? Number(caloriesBurned) || 0
+                            : Math.floor(
+                                incomingSteps * 0.04
+                            )
+                });
+
+                await activity.save();
+            }
+
+            // =================================================================
+            // ACHIEVEMENT CHECK
+            // =================================================================
+
+            if (stepDelta > 0) {
+
+                await evaluateAchievements(
+                    userId,
+                    activity,
+                    stepDelta
+                );
+            }
+
+            return res.status(200).json({
+                success: true,
+                message:
+                    'Background steps synced successfully',
+
+                activity: {
+                    date: activity.date,
+                    steps: activity.steps,
+                    caloriesBurned:
+                        activity.caloriesBurned
+                }
+            });
+
+        } catch (err) {
+
+            console.error(
+                'Server error in /sync-steps:',
+                err.message
+            );
+
+            return res.status(500).json({
+                success: false,
+                message: err.message
             });
         }
-
-        if (action === 'yes-water') {
-
-            const updatedWater =
-                (activity.waterLitres || 0) + 0.5;
-
-            activity.waterLitres =
-                Math.round(updatedWater * 100) / 100;
-
-            await activity.save();
-
-            await evaluateAchievements(
-                userId,
-                activity
-            );
-
-        } else if (
-            action === 'yes-food' ||
-            action === 'log-meal'
-        ) {
-
-            activity.mealCount =
-                (activity.mealCount || 0) + 1;
-
-            await activity.save();
-
-            await evaluateAchievements(
-                userId,
-                activity
-            );
-        }
-
-        res.status(200).json({
-            success: true,
-            message:
-                `Quick-action '${action}' logged successfully!`,
-            activity
-        });
-
-    } catch (err) {
-        console.error(
-            "Server error in /log-hydration:",
-            err.message
-        );
-
-        res.status(500).json({
-            success: false,
-            message: err.message
-        });
     }
-});
+);
+
+// ============================================================================
+// 3. FETCH ACTIVITY HISTORY
+// ============================================================================
+
+router.get(
+    '/history',
+    authMiddleware,
+    async (req, res) => {
+        try {
+
+            const userId = getUserId(req);
+
+            if (!userId) {
+                return res.status(401).json({
+                    success: false,
+                    message:
+                        'Unauthorized: User ID missing from token'
+                });
+            }
+
+            const activities =
+                await Activity
+                    .find({ userId })
+                    .sort({ date: -1 });
+
+            return res.status(200).json(
+                activities
+            );
+
+        } catch (err) {
+
+            console.error(
+                'Server error in /history activity:',
+                err.message
+            );
+
+            return res.status(500).json({
+                success: false,
+                message: err.message
+            });
+        }
+    }
+);
+
+// ============================================================================
+// 4. PUSH NOTIFICATION QUICK ACTIONS
+// Water + Food
+// ============================================================================
+
+router.post(
+    '/log-hydration',
+    authMiddleware,
+    async (req, res) => {
+        try {
+
+            const { action } = req.body;
+
+            const userId = getUserId(req);
+
+            if (!userId) {
+                return res.status(401).json({
+                    success: false,
+                    message:
+                        'Unauthorized: User ID missing from token'
+                });
+            }
+
+            console.log(
+                `Received push action click '${action}' for User: ${userId}`
+            );
+
+            // India local date
+            const today =
+                getIndiaDate();
+
+            // Find today's activity
+            let activity =
+                await Activity.findOne({
+                    userId,
+                    date: today
+                });
+
+            // Create if doesn't exist
+            if (!activity) {
+
+                activity = new Activity({
+                    userId,
+                    date: today
+                });
+            }
+
+            // =================================================================
+            // WATER
+            // =================================================================
+
+            if (action === 'yes-water') {
+
+                const updatedWater =
+                    Number(
+                        activity.waterLitres || 0
+                    ) + 0.5;
+
+                activity.waterLitres =
+                    Math.round(
+                        updatedWater * 100
+                    ) / 100;
+
+                await activity.save();
+
+                await evaluateAchievements(
+                    userId,
+                    activity
+                );
+
+            }
+
+            // =================================================================
+            // FOOD / MEAL
+            // =================================================================
+
+            else if (
+                action === 'yes-food' ||
+                action === 'log-meal'
+            ) {
+
+                activity.mealCount =
+                    Number(
+                        activity.mealCount || 0
+                    ) + 1;
+
+                await activity.save();
+
+                await evaluateAchievements(
+                    userId,
+                    activity
+                );
+            }
+
+            // =================================================================
+            // UNKNOWN ACTION
+            // =================================================================
+
+            else {
+
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        'Invalid quick-action'
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message:
+                    `Quick-action '${action}' logged successfully!`,
+                activity
+            });
+
+        } catch (err) {
+
+            console.error(
+                'Server error in /log-hydration:',
+                err.message
+            );
+
+            return res.status(500).json({
+                success: false,
+                message: err.message
+            });
+        }
+    }
+);
+
+// ============================================================================
+// EXPORT ROUTER
+// ============================================================================
 
 module.exports = router;
