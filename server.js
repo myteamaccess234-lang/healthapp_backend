@@ -36,7 +36,51 @@ const dietplanRouter = require('./dietplanRoutes');
 
 const app = express();
 
-app.use(cors());
+// ============================================================
+// CORS CONFIGURATION
+// ============================================================
+
+const corsOptions = {
+    origin: true,
+
+    methods: [
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'OPTIONS'
+    ],
+
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'Accept'
+    ],
+
+    credentials: false,
+
+    optionsSuccessStatus: 204
+};
+
+// Enable CORS
+app.use(cors(corsOptions));
+
+// ============================================================
+// REQUEST LOGGER
+// ============================================================
+
+app.use((req, res, next) => {
+    console.log(
+        `>>> ${req.method} ${req.originalUrl} | Origin: ${req.headers.origin || 'NO ORIGIN'}`
+    );
+
+    next();
+});
+
+// ============================================================
+// JSON BODY PARSER
+// ============================================================
+
 app.use(express.json({ limit: '2mb' }));
 
 // ============================================================
@@ -72,12 +116,18 @@ if (
         process.env.VAPID_MAILTO ||
         process.env.VAPID_EMAIL ||
         'mailto:support@healthapp.com',
+
         process.env.VAPID_PUBLIC_KEY,
+
         process.env.VAPID_PRIVATE_KEY
     );
 
-    console.log('>>> Web Push VAPID configuration loaded');
+    console.log(
+        '>>> Web Push VAPID configuration loaded'
+    );
+
 } else {
+
     console.warn(
         'WARNING: VAPID keys are missing. Web push notifications may fail.'
     );
@@ -96,9 +146,12 @@ const oauth2Client = new OAuth2(
 );
 
 if (process.env.GMAIL_REFRESH_TOKEN) {
+
     oauth2Client.setCredentials({
-        refresh_token: process.env.GMAIL_REFRESH_TOKEN
+        refresh_token:
+            process.env.GMAIL_REFRESH_TOKEN
     });
+
 }
 
 // ============================================================
@@ -106,46 +159,68 @@ if (process.env.GMAIL_REFRESH_TOKEN) {
 // ============================================================
 
 async function sendEmailViaGmailAPI(toEmail, otp) {
+
     const gmail = google.gmail({
         version: 'v1',
         auth: oauth2Client
     });
 
-    const subject = 'Your Health App Login OTP';
+    const subject =
+        'Your Health App Login OTP';
 
     const utf8Subject =
         `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
 
     const messageParts = [
+
         `From: Health App <${process.env.EMAIL_USER}>`,
+
         `To: ${toEmail}`,
+
         `Subject: ${utf8Subject}`,
+
         'Content-Type: text/html; charset=utf-8',
+
         'MIME-Version: 1.0',
+
         '',
+
         `<div style="font-family:Arial,sans-serif;padding:20px;color:#333">
+
             <h2>Health App Authentication</h2>
+
             <p>Your OTP code for login is:</p>
+
             <strong style="font-size:28px;color:#007bff">
                 ${otp}
             </strong>
-            <p>This code is valid for <strong>10 minutes</strong>.</p>
+
+            <p>
+                This code is valid for
+                <strong>10 minutes</strong>.
+            </p>
+
         </div>`
     ];
 
-    const message = messageParts.join('\n');
+    const message =
+        messageParts.join('\n');
 
-    const encodedMessage = Buffer.from(message)
-        .toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
+    const encodedMessage =
+        Buffer.from(message)
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
 
     await gmail.users.messages.send({
+
         userId: 'me',
+
         requestBody: {
             raw: encodedMessage
         }
+
     });
 }
 
@@ -153,49 +228,68 @@ async function sendEmailViaGmailAPI(toEmail, otp) {
 // SEND PUSH TO USER
 // ============================================================
 
-async function sendPushToUser(userId, notification) {
+async function sendPushToUser(
+    userId,
+    notification
+) {
+
     try {
-        const subscriptions = await Subscription.find({
-            userId: userId
-        });
 
-        const payload = JSON.stringify({
-            title:
-                notification.title ||
-                'Health App Reminder',
+        const subscriptions =
+            await Subscription.find({
+                userId: userId
+            });
 
-            body:
-                notification.message ||
-                'You have a health reminder.',
+        const payload =
+            JSON.stringify({
 
-            id:
-                notification._id
-                    ? notification._id.toString()
-                    : undefined,
+                title:
+                    notification.title ||
+                    'Health App Reminder',
 
-            _id:
-                notification._id
-                    ? notification._id.toString()
-                    : undefined,
+                body:
+                    notification.message ||
+                    'You have a health reminder.',
 
-            category:
-                notification.category ||
-                'General',
+                id:
+                    notification._id
+                        ? notification._id.toString()
+                        : undefined,
 
-            isInteractive:
-                notification.isInteractive !== false
-        });
+                _id:
+                    notification._id
+                        ? notification._id.toString()
+                        : undefined,
 
-        for (const sub of subscriptions) {
+                category:
+                    notification.category ||
+                    'General',
+
+                isInteractive:
+                    notification.isInteractive !== false
+            });
+
+        for (
+            const sub of subscriptions
+        ) {
+
             try {
+
                 await webpush.sendNotification(
+
                     {
-                        endpoint: sub.endpoint,
-                        keys: sub.keys
+                        endpoint:
+                            sub.endpoint,
+
+                        keys:
+                            sub.keys
                     },
+
                     payload
                 );
+
             } catch (err) {
+
                 console.error(
                     'Push notification error:',
                     err.message
@@ -205,17 +299,23 @@ async function sendPushToUser(userId, notification) {
                     err.statusCode === 404 ||
                     err.statusCode === 410
                 ) {
+
                     await Subscription.deleteOne({
-                        endpoint: sub.endpoint
+                        endpoint:
+                            sub.endpoint
                     });
+
                 }
             }
         }
+
     } catch (err) {
+
         console.error(
             'sendPushToUser error:',
             err.message
         );
+
     }
 }
 
@@ -230,38 +330,66 @@ async function createDailyNotification({
     category,
     uniqueKey
 }) {
+
     try {
-        const startOfDay = getIndiaStartOfDay();
+
+        const startOfDay =
+            getIndiaStartOfDay();
 
         const query = {
-            userId: user._id,
-            category: category,
+
+            userId:
+                user._id,
+
+            category:
+                category,
+
             createdAt: {
-                $gte: startOfDay
+                $gte:
+                    startOfDay
             }
         };
 
         if (uniqueKey) {
-            query.title = uniqueKey;
+
+            query.title =
+                uniqueKey;
+
         } else {
-            query.title = title;
+
+            query.title =
+                title;
+
         }
 
         const existing =
-            await Notification.findOne(query);
+            await Notification.findOne(
+                query
+            );
 
         if (existing) {
+
             return existing;
+
         }
 
         const notification =
             await Notification.create({
-                userId: user._id,
+
+                userId:
+                    user._id,
+
                 category,
+
                 title,
+
                 message,
-                isInteractive: true,
-                status: 'Unread'
+
+                isInteractive:
+                    true,
+
+                status:
+                    'Unread'
             });
 
         await sendPushToUser(
@@ -272,6 +400,7 @@ async function createDailyNotification({
         return notification;
 
     } catch (err) {
+
         console.error(
             'createDailyNotification error:',
             err.message
@@ -286,211 +415,387 @@ async function createDailyNotification({
 // ============================================================
 
 app.get('/', (req, res) => {
+
     res.status(200).json({
+
         success: true,
-        message: 'Health App Server is active and running!'
+
+        message:
+            'Health App Server is active and running!'
     });
+
 });
 
 app.get('/health', (req, res) => {
+
     res.status(200).json({
+
         success: true,
+
         status: 'OK',
-        date: getIndiaDateString()
+
+        date:
+            getIndiaDateString()
     });
+
 });
 
 // ============================================================
 // SEND / RESEND OTP
 // ============================================================
 
-app.post('/api/auth/send-otp', async (req, res) => {
-    try {
-        let { email } = req.body;
+app.post(
+    '/api/auth/send-otp',
+    async (req, res) => {
 
-        if (!email) {
-            return res.status(400).json({
-                success: false,
-                message: 'Email is required'
-            });
-        }
+        try {
 
-        email = email.toLowerCase().trim();
+            let { email } =
+                req.body;
 
-        const otp =
-            Math.floor(
-                100000 +
-                Math.random() * 900000
-            ).toString();
+            if (!email) {
 
-        const otpExpiry =
-            new Date(
-                Date.now() +
-                10 * 60 * 1000
+                return res.status(400).json({
+
+                    success: false,
+
+                    message:
+                        'Email is required'
+                });
+
+            }
+
+            email =
+                email
+                    .toLowerCase()
+                    .trim();
+
+            const otp =
+                Math.floor(
+                    100000 +
+                    Math.random() * 900000
+                ).toString();
+
+            const otpExpiry =
+                new Date(
+                    Date.now() +
+                    10 * 60 * 1000
+                );
+
+            let user =
+                await User.findOne({
+                    email
+                });
+
+            if (!user) {
+
+                user =
+                    new User({
+
+                        email,
+
+                        otp,
+
+                        otpExpiry
+                    });
+
+            } else {
+
+                user.otp =
+                    otp;
+
+                user.otpExpiry =
+                    otpExpiry;
+            }
+
+            await user.save();
+
+            console.log(
+                `>>> OTP FOR ${email}: ${otp}`
             );
 
-        let user =
-            await User.findOne({ email });
-
-        if (!user) {
-            user = new User({
+            await sendEmailViaGmailAPI(
                 email,
-                otp,
-                otpExpiry
+                otp
+            );
+
+            console.log(
+                `>>> OTP Email delivered to ${email}`
+            );
+
+            return res.status(200).json({
+
+                success: true,
+
+                message:
+                    'OTP sent successfully.'
             });
-        } else {
-            user.otp = otp;
-            user.otpExpiry = otpExpiry;
+
+        } catch (err) {
+
+            console.error(
+                'SEND-OTP FAILED:',
+                err.message
+            );
+
+            console.error(
+                'FULL EMAIL ERROR:',
+                err
+            );
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    `Email sending failed: ${err.message}`
+            });
         }
-
-        await user.save();
-
-        console.log(
-            `>>> OTP FOR ${email}: ${otp}`
-        );
-
-        await sendEmailViaGmailAPI(
-            email,
-            otp
-        );
-
-        console.log(
-            `>>> OTP Email delivered to ${email}`
-        );
-
-        return res.status(200).json({
-            success: true,
-            message: 'OTP sent successfully.'
-        });
-
-    } catch (err) {
-        console.error(
-            'SEND-OTP FAILED:',
-            err.message
-        );
-
-        return res.status(500).json({
-            success: false,
-            message:
-                `Email sending failed: ${err.message}`
-        });
     }
-});
+);
 
-// Dedicated Resend OTP route to match frontend calls precisely
-app.post('/api/auth/resend-otp', async (req, res) => {
-    try {
-        let { email } = req.body;
-        if (!email) {
-            return res.status(400).json({ success: false, message: 'Email is required' });
+// ============================================================
+// RESEND OTP
+// ============================================================
+
+app.post(
+    '/api/auth/resend-otp',
+    async (req, res) => {
+
+        try {
+
+            let { email } =
+                req.body;
+
+            if (!email) {
+
+                return res.status(400).json({
+
+                    success: false,
+
+                    message:
+                        'Email is required'
+                });
+
+            }
+
+            email =
+                email
+                    .toLowerCase()
+                    .trim();
+
+            const user =
+                await User.findOne({
+                    email
+                });
+
+            if (!user) {
+
+                return res.status(404).json({
+
+                    success: false,
+
+                    message:
+                        'User not found'
+                });
+
+            }
+
+            const otp =
+                Math.floor(
+                    100000 +
+                    Math.random() * 900000
+                ).toString();
+
+            user.otp =
+                otp;
+
+            user.otpExpiry =
+                new Date(
+                    Date.now() +
+                    10 * 60 * 1000
+                );
+
+            await user.save();
+
+            console.log(
+                `>>> RESEND OTP FOR ${email}: ${otp}`
+            );
+
+            await sendEmailViaGmailAPI(
+                email,
+                otp
+            );
+
+            console.log(
+                `>>> Resend OTP email delivered to ${email}`
+            );
+
+            return res.status(200).json({
+
+                success: true,
+
+                message:
+                    'Resend OTP successful'
+            });
+
+        } catch (err) {
+
+            console.error(
+                'RESEND OTP ERROR:',
+                err.message
+            );
+
+            console.error(
+                'FULL RESEND EMAIL ERROR:',
+                err
+            );
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    err.message
+            });
         }
-        email = email.toLowerCase().trim();
-
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
-        }
-
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        user.otp = otp;
-        user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-        await user.save();
-
-        await sendEmailViaGmailAPI(email, otp);
-
-        return res.status(200).json({ success: true, message: 'Resend OTP successful' });
-    } catch (err) {
-        console.error('RESEND OTP ERROR:', err.message);
-        return res.status(500).json({ success: false, message: err.message });
     }
-});
+);
 
 // ============================================================
 // VERIFY OTP
 // ============================================================
 
-app.post('/api/auth/verify-otp', async (req, res) => {
-    try {
-        let { email, otp } = req.body;
+app.post(
+    '/api/auth/verify-otp',
+    async (req, res) => {
 
-        if (!email || !otp) {
-            return res.status(400).json({
-                success: false,
+        try {
+
+            let { email, otp } =
+                req.body;
+
+            if (!email || !otp) {
+
+                return res.status(400).json({
+
+                    success: false,
+
+                    message:
+                        'Email and OTP are required'
+                });
+
+            }
+
+            email =
+                email
+                    .toLowerCase()
+                    .trim();
+
+            const user =
+                await User.findOne({
+                    email
+                });
+
+            if (
+                !user ||
+                user.otp !== String(otp) ||
+                !user.otpExpiry ||
+                user.otpExpiry < new Date()
+            ) {
+
+                return res.status(400).json({
+
+                    success: false,
+
+                    message:
+                        'Invalid or expired OTP'
+                });
+
+            }
+
+            user.otp =
+                null;
+
+            user.otpExpiry =
+                null;
+
+            await user.save();
+
+            const jwtSecret =
+                process.env.JWT_SECRET;
+
+            if (!jwtSecret) {
+
+                return res.status(500).json({
+
+                    success: false,
+
+                    message:
+                        'JWT_SECRET is missing'
+                });
+
+            }
+
+            const token =
+                jwt.sign(
+
+                    {
+                        id:
+                            user._id,
+
+                        email:
+                            user.email
+                    },
+
+                    jwtSecret,
+
+                    {
+                        expiresIn:
+                            '7d'
+                    }
+                );
+
+            return res.status(200).json({
+
+                success: true,
+
                 message:
-                    'Email and OTP are required'
-            });
-        }
+                    'Login successful',
 
-        email = email.toLowerCase().trim();
+                token,
 
-        const user =
-            await User.findOne({ email });
+                email:
+                    user.email,
 
-        if (
-            !user ||
-            user.otp !== String(otp) ||
-            !user.otpExpiry ||
-            user.otpExpiry < new Date()
-        ) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    'Invalid or expired OTP'
-            });
-        }
+                user: {
 
-        user.otp = null;
-        user.otpExpiry = null;
+                    id:
+                        user._id,
 
-        await user.save();
-
-        const jwtSecret =
-            process.env.JWT_SECRET;
-
-        if (!jwtSecret) {
-            return res.status(500).json({
-                success: false,
-                message:
-                    'JWT_SECRET is missing'
-            });
-        }
-
-        const token =
-            jwt.sign(
-                {
-                    id: user._id,
-                    email: user.email
-                },
-                jwtSecret,
-                {
-                    expiresIn: '7d'
+                    email:
+                        user.email
                 }
+            });
+
+        } catch (err) {
+
+            console.error(
+                'VERIFY OTP ERROR:',
+                err
             );
 
-        return res.status(200).json({
-            success: true,
-            message: 'Login successful',
-            token,
-            email: user.email,
-            user: {
-                id: user._id,
-                email: user.email
-            }
-        });
+            return res.status(500).json({
 
-    } catch (err) {
-        console.error(
-            'VERIFY OTP ERROR:',
-            err
-        );
+                success: false,
 
-        return res.status(500).json({
-            success: false,
-            message:
-                'Server error during verification.'
-        });
+                message:
+                    'Server error during verification.'
+            });
+
+        }
     }
-});
+);
 
 // ============================================================
 // FEATURE ROUTERS
@@ -535,18 +840,23 @@ const MONGO_URI =
     process.env.MONGODB_URI;
 
 const PORT =
-    process.env.PORT || 5000;
+    process.env.PORT ||
+    5000;
 
 if (!MONGO_URI) {
+
     console.error(
         'CRITICAL ERROR: MONGO_URI is missing!'
     );
+
     process.exit(1);
 }
 
 mongoose
     .connect(MONGO_URI)
+
     .then(() => {
+
         console.log(
             '>>> MongoDB Connected Successfully'
         );
@@ -554,6 +864,7 @@ mongoose
         app.listen(
             PORT,
             () => {
+
                 console.log(
                     `>>> Server is live and listening on port ${PORT}`
                 );
@@ -561,10 +872,14 @@ mongoose
                 console.log(
                     `>>> India Date: ${getIndiaDateString()}`
                 );
+
             }
         );
+
     })
+
     .catch((err) => {
+
         console.error(
             '>>> MongoDB Connection Error:',
             err.message
