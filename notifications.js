@@ -275,30 +275,45 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
             }
 
             if (userAction === 'yes-water') {
-                activity.waterLitres = Number((Number(activity.waterLitres || 0) + 0.25).toFixed(2));
+                activity.waterLitres = Number(
+                    (
+                        Number(activity.waterLitres || 0) + 0.25
+                    ).toFixed(2)
+                );
             } else if (userAction === 'yes-food') {
-                activity.mealCount = Number(activity.mealCount || 0) + 1;
-                activity.calorieIntake = Number(activity.calorieIntake || 0) + 500;
+                activity.mealCount =
+                    Number(activity.mealCount || 0) + 1;
+
+                activity.calorieIntake =
+                    Number(activity.calorieIntake || 0) + 500;
             }
 
             await activity.save();
 
             notification.status = 'Completed';
             notification.snoozedUntil = null;
+
             await notification.save();
 
             return res.status(200).json({
                 success: true,
-                message: userAction === 'yes-water' ? 'Water intake recorded.' : 'Meal recorded.',
+                message:
+                    userAction === 'yes-water'
+                        ? 'Water intake recorded.'
+                        : 'Meal recorded.',
                 action: userAction,
                 activity,
                 notification
             });
         }
 
-        if (['yes', 'start-sleep', 'wake-up'].includes(userAction)) {
+        if (
+            ['yes', 'start-sleep', 'wake-up']
+                .includes(userAction)
+        ) {
             notification.status = 'Completed';
             notification.snoozedUntil = null;
+
             await notification.save();
 
             return res.status(200).json({
@@ -374,6 +389,59 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
             success: false,
             error:
                 'Server error processing response'
+        });
+    }
+});
+
+// ============================================================
+// 3. DELETE NOTIFICATION
+// ============================================================
+
+router.delete('/:id', verifyToken, async (req, res) => {
+    try {
+        const userId =
+            req.user?.id ||
+            req.user?._id ||
+            req.user?.userId;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Unauthorized: User ID missing from token'
+            });
+        }
+
+        const notification =
+            await Notification.findOneAndDelete({
+                _id: req.params.id,
+                userId: userId
+            });
+
+        if (!notification) {
+            return res.status(404).json({
+                success: false,
+                message: 'Notification not found'
+            });
+        }
+
+        console.log(
+            `>>> NOTIFICATION ${req.params.id} DELETED FOR USER ${userId} <<<`
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: 'Notification deleted successfully'
+        });
+
+    } catch (err) {
+        console.error(
+            'Delete notification error:',
+            err.message
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to delete notification'
         });
     }
 });
