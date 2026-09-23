@@ -9374,22 +9374,25 @@ async function seedDB() {
     await mongoose.connect(MONGO_URI);
     console.log('Database connected for seeding...');
 
-    await DietPlan.deleteMany({});
-    console.log('Old diet plans cleared.');
-
     // Merge duplicate age entries without changing diet-plan content
     const mergedDietPlans = Object.values(
       dietPlansData.reduce((acc, item) => {
+        if (!item.age || !item.categories) {
+          throw new Error(
+            `Invalid diet data found for age: ${item.age}`
+          );
+        }
+
         if (!acc[item.age]) {
           acc[item.age] = {
-            ...item,
-            categories: { ...(item.categories || {}) }
+            age: item.age,
+            categories: {}
           };
-        } else {
-          for (const [category, data] of Object.entries(item.categories || {})) {
-            if (!acc[item.age].categories[category]) {
-              acc[item.age].categories[category] = data;
-            }
+        }
+
+        for (const [category, data] of Object.entries(item.categories)) {
+          if (!acc[item.age].categories[category]) {
+            acc[item.age].categories[category] = data;
           }
         }
 
@@ -9399,14 +9402,49 @@ async function seedDB() {
 
     console.log(`Preparing ${mergedDietPlans.length} age-group documents...`);
 
+    // Validate that every age has all 3 required categories
+    for (const plan of mergedDietPlans) {
+      const missingCategories = [];
+
+      if (!plan.categories.underweight) {
+        missingCategories.push('underweight');
+      }
+
+      if (!plan.categories.normal) {
+        missingCategories.push('normal');
+      }
+
+      if (!plan.categories.overweight) {
+        missingCategories.push('overweight');
+      }
+
+      if (missingCategories.length > 0) {
+        throw new Error(
+          `Age ${plan.age} is missing category(s): ${missingCategories.join(', ')}`
+        );
+      }
+    }
+
+    console.log('All 60 age groups contain all 3 required categories.');
+
+    // Only clear old data after validation succeeds
+    await DietPlan.deleteMany({});
+    console.log('Old diet plans cleared.');
+
     await DietPlan.insertMany(mergedDietPlans);
 
-    console.log('Successfully seeded all age group diet plans into MongoDB Atlas!');
+    console.log(
+      'Successfully seeded all age group diet plans into MongoDB Atlas!'
+    );
 
     await mongoose.connection.close();
   } catch (err) {
     console.error('Error seeding data:', err);
-    await mongoose.connection.close();
+
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.connection.close();
+    }
+
     process.exit(1);
   }
 }
