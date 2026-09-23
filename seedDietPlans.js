@@ -1944,6 +1944,7 @@ const dietPlansData = [
       }
     }
   },
+  {
     age: 30,
     categories: {
       underweight: {
