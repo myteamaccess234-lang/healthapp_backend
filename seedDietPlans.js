@@ -9374,47 +9374,81 @@ async function seedDB() {
     await mongoose.connect(MONGO_URI);
     console.log('Database connected for seeding...');
 
-    // Merge duplicate age entries without changing diet-plan content
+    // Convert the current format:
+    // { age, category, plan, days }
+    //
+    // into the format required by dietplanModel.js:
+    // {
+    //   age,
+    //   categories: {
+    //     underweight: { plan1: { days: [...] } },
+    //     normal: { plan1: { days: [...] } },
+    //     overweight: { plan1: { days: [...] } }
+    //   }
+    // }
+
     const mergedDietPlans = Object.values(
       dietPlansData.reduce((acc, item) => {
-        if (!item.age || !item.categories) {
+        if (
+          !item.age ||
+          !item.category ||
+          !item.plan ||
+          !Array.isArray(item.days)
+        ) {
           throw new Error(
-            `Invalid diet data found for age: ${item.age}`
+            `Invalid diet data found: ${JSON.stringify(item).substring(0, 300)}`
           );
         }
 
         if (!acc[item.age]) {
           acc[item.age] = {
             age: item.age,
-            categories: {}
+            categories: {
+              underweight: {},
+              normal: {},
+              overweight: {}
+            }
           };
         }
 
-        for (const [category, data] of Object.entries(item.categories)) {
-          if (!acc[item.age].categories[category]) {
-            acc[item.age].categories[category] = data;
-          }
+        if (!acc[item.age].categories[item.category]) {
+          acc[item.age].categories[item.category] = {};
         }
+
+        acc[item.age].categories[item.category][item.plan] = {
+          days: item.days
+        };
 
         return acc;
       }, {})
     );
 
-    console.log(`Preparing ${mergedDietPlans.length} age-group documents...`);
+    console.log(
+      `Preparing ${mergedDietPlans.length} age-group documents...`
+    );
 
-    // Validate that every age has all 3 required categories
+    // Check that every age has all 3 required categories
     for (const plan of mergedDietPlans) {
       const missingCategories = [];
 
-      if (!plan.categories.underweight) {
+      if (
+        !plan.categories.underweight ||
+        Object.keys(plan.categories.underweight).length === 0
+      ) {
         missingCategories.push('underweight');
       }
 
-      if (!plan.categories.normal) {
+      if (
+        !plan.categories.normal ||
+        Object.keys(plan.categories.normal).length === 0
+      ) {
         missingCategories.push('normal');
       }
 
-      if (!plan.categories.overweight) {
+      if (
+        !plan.categories.overweight ||
+        Object.keys(plan.categories.overweight).length === 0
+      ) {
         missingCategories.push('overweight');
       }
 
@@ -9425,19 +9459,23 @@ async function seedDB() {
       }
     }
 
-    console.log('All 60 age groups contain all 3 required categories.');
+    console.log(
+      'All age groups contain underweight, normal and overweight categories.'
+    );
 
-    // Only clear old data after validation succeeds
+    // Delete old data only after validation succeeds
     await DietPlan.deleteMany({});
+
     console.log('Old diet plans cleared.');
 
     await DietPlan.insertMany(mergedDietPlans);
 
     console.log(
-      'Successfully seeded all age group diet plans into MongoDB Atlas!'
+      `Successfully seeded ${mergedDietPlans.length} age-group documents into MongoDB Atlas!`
     );
 
     await mongoose.connection.close();
+
   } catch (err) {
     console.error('Error seeding data:', err);
 
