@@ -4691,7 +4691,7 @@ const dietPlansData = [
               Saturday: { breakfast: "Jowar Methi Roti 3/4-1 cup", lunch: "Masoor Dal with Methi 3/4-1 cup", snack: "Peanut Poha Chivda 15-25 g/150 ml", dinner: "Dudhi Muthia with Curd 3/4-1 cup" },
               Sunday: { breakfast: "Green Peas Roti 3/4-1 cup", lunch: "Prawn Coconut Curry 90-100 g non-veg", snack: "Cowpea Sundal 15-25 g/150 ml", dinner: "Jowar Thalipeeth with Dal 3/4-1 cup" }
             }
-          }
+          },
           plan2: {
             description: "Wednesday & Sunday Non-Veg",
             days: {
