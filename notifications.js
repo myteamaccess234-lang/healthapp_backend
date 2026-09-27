@@ -21,15 +21,71 @@ function getIndiaDate() {
 }
 
 // ============================================================
+// HELPER: GET LOGGED-IN USER ID
+// ============================================================
+
+function getUserId(req) {
+    return (
+        req.user?.id ||
+        req.user?._id ||
+        req.user?.userId ||
+        null
+    );
+}
+
+// ============================================================
+// HELPER: IDENTIFY REMINDER TYPE
+// ============================================================
+
+function getReminderType(notification) {
+    const category = String(notification.category || '')
+        .trim()
+        .toLowerCase();
+
+    const title = String(notification.title || '')
+        .trim()
+        .toLowerCase();
+
+    if (
+        ['reminders', 'sleep'].includes(category) &&
+        ['sleep time', 'bedtime', 'start sleep'].includes(title)
+    ) {
+        return 'sleep-start';
+    }
+
+    if (
+        ['reminders', 'sleep'].includes(category) &&
+        ['good morning', 'wake up', 'wake-up'].includes(title)
+    ) {
+        return 'sleep-end';
+    }
+
+    if (
+        category === 'hydration' ||
+        title.includes('water') ||
+        title.includes('hydration')
+    ) {
+        return 'water';
+    }
+
+    if (
+        category === 'meals' ||
+        title.includes('meal') ||
+        title.includes('food')
+    ) {
+        return 'meal';
+    }
+
+    return 'general';
+}
+
+// ============================================================
 // 1. SAVE NOTIFICATION FROM ANDROID APP
 // ============================================================
 
 router.post('/', verifyToken, async (req, res) => {
     try {
-        const userId =
-            req.user?.id ||
-            req.user?._id ||
-            req.user?.userId;
+        const userId = getUserId(req);
 
         if (!userId) {
             return res.status(401).json({
@@ -57,7 +113,6 @@ router.post('/', verifyToken, async (req, res) => {
             });
         }
 
-        // Use only categories allowed by notificationModel.js.
         const allowedCategories = [
             'Hydration',
             'Meals',
@@ -109,10 +164,7 @@ router.post('/', verifyToken, async (req, res) => {
 
 router.get('/', verifyToken, async (req, res) => {
     try {
-        const userId =
-            req.user?.id ||
-            req.user?._id ||
-            req.user?.userId;
+        const userId = getUserId(req);
 
         if (!userId) {
             return res.status(401).json({
@@ -125,7 +177,7 @@ router.get('/', verifyToken, async (req, res) => {
             .find({ userId })
             .sort({ createdAt: -1 });
 
-        res.status(200).json(notifications);
+        return res.status(200).json(notifications);
 
     } catch (err) {
         console.error(
@@ -133,7 +185,7 @@ router.get('/', verifyToken, async (req, res) => {
             err.message
         );
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to fetch notifications'
         });
@@ -141,30 +193,13 @@ router.get('/', verifyToken, async (req, res) => {
 });
 
 // ============================================================
-// 3. HANDLE NOTIFICATION RESPONSES
+// 3. SLEEP TRACKER: GET CURRENT / LATEST SLEEP STATUS
+// GET /api/notifications/sleep/status
 // ============================================================
 
-router.patch('/:id/respond', verifyToken, async (req, res) => {
+router.get('/sleep/status', verifyToken, async (req, res) => {
     try {
-
-        const {
-            response,
-            action
-        } = req.body;
-
-        const userAction = action || response;
-
-        if (!userAction) {
-            return res.status(400).json({
-                success: false,
-                message: 'Response action is required'
-            });
-        }
-
-        const userId =
-            req.user?.id ||
-            req.user?._id ||
-            req.user?.userId;
+        const userId = getUserId(req);
 
         if (!userId) {
             return res.status(401).json({
@@ -173,17 +208,86 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
             });
         }
 
-        // =====================================================
-        // FIND NOTIFICATION
-        // IMPORTANT: Make sure this notification belongs
-        // to the currently logged-in user.
-        // =====================================================
+        const activity = await Activity.findOne({
+            userId,
+            $or: [
+                { isSleeping: true },
+                { sleepStart: { $ne: null } }
+            ]
+        }).sort({
+            sleepStart: -1
+        });
 
-        const notification =
-            await Notification.findOne({
-                _id: req.params.id,
-                userId: userId
+        if (!activity) {
+            return res.status(200).json({
+                success: true,
+                isSleeping: false,
+                message: 'No sleep session found',
+                sleep: null
             });
+        }
+
+        return res.status(200).json({
+            success: true,
+            isSleeping: activity.isSleeping === true,
+            sleep: {
+                sleepStart: activity.sleepStart,
+                sleepEnd: activity.sleepEnd,
+                sleepMinutes: activity.sleepMinutes || 0,
+                isSleeping: activity.isSleeping === true
+            }
+        });
+
+    } catch (err) {
+        console.error(
+            'Sleep status error:',
+            err.message
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to retrieve sleep status'
+        });
+    }
+});
+
+// ============================================================
+// 4. HANDLE NOTIFICATION RESPONSES
+// Only YES and NO are accepted.
+// ============================================================
+
+router.patch('/:id/respond', verifyToken, async (req, res) => {
+    try {
+        const userId = getUserId(req);
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Unauthorized: User ID missing from token'
+            });
+        }
+
+        const rawResponse =
+            req.body?.response ??
+            req.body?.action;
+
+        const userAction =
+            typeof rawResponse === 'string'
+                ? rawResponse.trim().toLowerCase()
+                : '';
+
+        if (!['yes', 'no'].includes(userAction)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Response must be Yes or No'
+            });
+        }
+
+        // Find notification belonging to this user.
+        const notification = await Notification.findOne({
+            _id: req.params.id,
+            userId
+        });
 
         if (!notification) {
             return res.status(404).json({
@@ -192,34 +296,81 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
             });
         }
 
+        if (notification.status === 'Completed') {
+            return res.status(200).json({
+                success: true,
+                message: 'Notification was already completed',
+                notification
+            });
+        }
+
         notification.actionTaken = userAction;
 
+        const reminderType = getReminderType(notification);
+
         // =====================================================
-        // SLEEP: NIGHT YES
+        // NO: SNOOZE ANY REMINDER FOR 20 MINUTES
         // =====================================================
 
-        const isSleepNotification =
-            notification.category === 'Reminders' &&
-            notification.title === 'Sleep Time';
+        if (userAction === 'no') {
+            const twentyMinutesLater = new Date(
+                Date.now() + 20 * 60 * 1000
+            );
 
-        if (
-            isSleepNotification &&
-            (
-                userAction === 'yes' ||
-                userAction === 'start-sleep'
-            )
-        ) {
+            notification.status = 'Snoozed';
+            notification.snoozedUntil = twentyMinutesLater;
+
+            await notification.save();
+
+            console.log(
+                `>>> NOTIFICATION ${notification._id} SNOOZED UNTIL ${twentyMinutesLater.toISOString()} <<<`
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: 'Reminder snoozed for 20 minutes.',
+                action: 'no',
+                snoozedUntil: twentyMinutesLater,
+                notification
+            });
+        }
+
+        // =====================================================
+        // YES: START SLEEP
+        // =====================================================
+
+        if (reminderType === 'sleep-start') {
+            // Prevent overwriting an already active sleep session.
+            const activeSleep = await Activity.findOne({
+                userId,
+                isSleeping: true
+            }).sort({
+                sleepStart: -1
+            });
+
+            if (activeSleep) {
+                notification.status = 'Completed';
+                notification.snoozedUntil = null;
+                await notification.save();
+
+                return res.status(200).json({
+                    success: true,
+                    message: 'Sleep tracking is already active.',
+                    action: 'yes',
+                    isSleeping: true,
+                    sleepStartedAt: activeSleep.sleepStart,
+                    activity: activeSleep,
+                    notification
+                });
+            }
 
             const today = getIndiaDate();
 
-            // Find today's activity record
-            let activity =
-                await Activity.findOne({
-                    userId,
-                    date: today
-                });
+            let activity = await Activity.findOne({
+                userId,
+                date: today
+            });
 
-            // Create today's activity if it doesn't exist
             if (!activity) {
                 activity = new Activity({
                     userId,
@@ -227,98 +378,78 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
                 });
             }
 
-            // Start sleep
-            activity.sleepStart = new Date();
+            const sleepStart = new Date();
+
+            activity.sleepStart = sleepStart;
             activity.sleepEnd = null;
             activity.sleepMinutes = 0;
             activity.isSleeping = true;
 
             await activity.save();
 
-            // Mark notification completed
             notification.status = 'Completed';
             notification.snoozedUntil = null;
 
             await notification.save();
 
             console.log(
-                `>>> SLEEP STARTED FOR USER ${userId} AT ${activity.sleepStart.toISOString()} <<<`
+                `>>> SLEEP STARTED FOR USER ${userId} AT ${sleepStart.toISOString()} <<<`
             );
 
             return res.status(200).json({
                 success: true,
                 message: 'Sleep tracking started.',
-                action: 'start-sleep',
+                action: 'yes',
+                isSleeping: true,
                 sleepStartedAt: activity.sleepStart,
-                activity
+                activity,
+                notification
             });
         }
 
         // =====================================================
-        // SLEEP: MORNING YES
+        // YES: END SLEEP / WAKE UP
         // =====================================================
 
-        const isWakeNotification =
-            notification.category === 'Reminders' &&
-            notification.title === 'Good Morning';
-
-        if (
-            isWakeNotification &&
-            (
-                userAction === 'yes' ||
-                userAction === 'wake-up'
-            )
-        ) {
-
-            // Find the currently active sleep session.
-            // This is important because sleep started yesterday
-            // and the user wakes up today.
-
-            const activity =
-                await Activity.findOne({
-                    userId,
-                    isSleeping: true
-                }).sort({
-                    sleepStart: -1
-                });
+        if (reminderType === 'sleep-end') {
+            const activity = await Activity.findOne({
+                userId,
+                isSleeping: true
+            }).sort({
+                sleepStart: -1
+            });
 
             if (!activity || !activity.sleepStart) {
-
-                notification.status = 'Completed';
-                notification.snoozedUntil = null;
-
-                await notification.save();
-
                 return res.status(400).json({
                     success: false,
-                    message:
-                        'No active sleep session was found.'
+                    message: 'No active sleep session was found.',
+                    isSleeping: false
                 });
             }
 
-            // Current wake-up time
             const sleepEnd = new Date();
 
-            // Calculate milliseconds
             const differenceMs =
                 sleepEnd.getTime() -
-                activity.sleepStart.getTime();
+                new Date(activity.sleepStart).getTime();
 
-            // Convert milliseconds to minutes
-            const sleepMinutes =
-                Math.max(
-                    0,
-                    Math.round(differenceMs / (1000 * 60))
-                );
+            if (differenceMs < 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Sleep end time cannot be before sleep start time.'
+                });
+            }
 
-            // Save sleep information
+            const sleepMinutes = Math.round(
+                differenceMs / (1000 * 60)
+            );
+
             activity.sleepEnd = sleepEnd;
             activity.sleepMinutes = sleepMinutes;
             activity.isSleeping = false;
 
             await activity.save();
 
-            // Complete morning notification
             notification.status = 'Completed';
             notification.snoozedUntil = null;
 
@@ -335,42 +466,40 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'Sleep tracking stopped successfully.',
-                action: 'wake-up',
+                action: 'yes',
+                isSleeping: false,
                 sleepStartedAt: activity.sleepStart,
                 sleepEndedAt: activity.sleepEnd,
                 sleepMinutes: activity.sleepMinutes,
-                activity
+                activity,
+                notification
             });
         }
 
         // =====================================================
-        // NORMAL POSITIVE RESPONSES
-        //
-        // Water, food and other existing notifications
-        // continue working.
+        // YES: WATER REMINDER
         // =====================================================
 
-        if (['yes-water', 'yes-food'].includes(userAction)) {
+        if (reminderType === 'water') {
             const today = getIndiaDate();
-            let activity = await Activity.findOne({ userId, date: today });
+
+            let activity = await Activity.findOne({
+                userId,
+                date: today
+            });
 
             if (!activity) {
-                activity = new Activity({ userId, date: today });
+                activity = new Activity({
+                    userId,
+                    date: today
+                });
             }
 
-            if (userAction === 'yes-water') {
-                activity.waterLitres = Number(
-                    (
-                        Number(activity.waterLitres || 0) + 0.25
-                    ).toFixed(2)
-                );
-            } else if (userAction === 'yes-food') {
-                activity.mealCount =
-                    Number(activity.mealCount || 0) + 1;
-
-                activity.calorieIntake =
-                    Number(activity.calorieIntake || 0) + 500;
-            }
+            activity.waterLitres = Number(
+                (
+                    Number(activity.waterLitres || 0) + 0.25
+                ).toFixed(2)
+            );
 
             await activity.save();
 
@@ -381,20 +510,40 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
 
             return res.status(200).json({
                 success: true,
-                message:
-                    userAction === 'yes-water'
-                        ? 'Water intake recorded.'
-                        : 'Meal recorded.',
-                action: userAction,
+                message: 'Water intake recorded.',
+                action: 'yes',
                 activity,
                 notification
             });
         }
 
-        if (
-            ['yes', 'start-sleep', 'wake-up']
-                .includes(userAction)
-        ) {
+        // =====================================================
+        // YES: MEAL REMINDER
+        // =====================================================
+
+        if (reminderType === 'meal') {
+            const today = getIndiaDate();
+
+            let activity = await Activity.findOne({
+                userId,
+                date: today
+            });
+
+            if (!activity) {
+                activity = new Activity({
+                    userId,
+                    date: today
+                });
+            }
+
+            activity.mealCount =
+                Number(activity.mealCount || 0) + 1;
+
+            activity.calorieIntake =
+                Number(activity.calorieIntake || 0) + 500;
+
+            await activity.save();
+
             notification.status = 'Completed';
             notification.snoozedUntil = null;
 
@@ -402,91 +551,49 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
 
             return res.status(200).json({
                 success: true,
-                message: 'Response recorded as Completed!',
-                action: userAction,
+                message: 'Meal recorded.',
+                action: 'yes',
+                activity,
                 notification
             });
         }
 
         // =====================================================
-        // NO / SNOOZE
-        //
-        // Existing 20-minute behavior remains unchanged.
+        // YES: OTHER / GENERAL REMINDERS
         // =====================================================
 
-        if (
-            [
-                'no',
-                'no-forgot',
-                'snooze'
-            ].includes(userAction)
-        ) {
-
-            const twentyMinutesLater =
-                new Date(
-                    Date.now() + 20 * 60 * 1000
-                );
-
-            notification.status = 'Snoozed';
-            notification.snoozedUntil =
-                twentyMinutesLater;
-
-            await notification.save();
-
-            console.log(
-                `>>> NOTIFICATION ${req.params.id} SNOOZED UNTIL: ${twentyMinutesLater.toISOString()} <<<`
-            );
-
-            return res.status(200).json({
-                success: true,
-                message:
-                    'Notification snoozed! Will repeat in 20 minutes.',
-                snoozedUntil:
-                    twentyMinutesLater,
-                notification
-            });
-        }
-
-        // =====================================================
-        // DEFAULT DISMISSAL
-        // =====================================================
-
-        notification.status = 'Dismissed';
+        notification.status = 'Completed';
         notification.snoozedUntil = null;
 
         await notification.save();
 
         return res.status(200).json({
             success: true,
-            message: 'Notification dismissed',
+            message: 'Reminder marked as completed.',
+            action: 'yes',
             notification
         });
 
     } catch (err) {
-
         console.error(
             'Notification response error:',
             err.message
         );
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            error:
-                'Server error processing response'
+            error: 'Server error processing response'
         });
     }
 });
 
 // ============================================================
-// 4. DELETE NOTIFICATION
+// 5. DELETE NOTIFICATION
 // ============================================================
 
 router.delete('/:id', verifyToken, async (req, res) => {
     try {
-        const userId =
-            req.user?.id ||
-            req.user?._id ||
-            req.user?.userId;
+        const userId = getUserId(req);
 
         if (!userId) {
             return res.status(401).json({
@@ -498,7 +605,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
         const notification =
             await Notification.findOneAndDelete({
                 _id: req.params.id,
-                userId: userId
+                userId
             });
 
         if (!notification) {
