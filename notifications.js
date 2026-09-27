@@ -1,3 +1,4 @@
+
 const express = require('express');
 const router = express.Router();
 
@@ -20,7 +21,90 @@ function getIndiaDate() {
 }
 
 // ============================================================
-// 1. FETCH NOTIFICATIONS FOR LOGGED-IN USER
+// 1. SAVE NOTIFICATION FROM ANDROID APP
+// ============================================================
+
+router.post('/', verifyToken, async (req, res) => {
+    try {
+        const userId =
+            req.user?.id ||
+            req.user?._id ||
+            req.user?.userId;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Unauthorized: User ID missing from token'
+            });
+        }
+
+        const {
+            category,
+            title,
+            message,
+            isInteractive
+        } = req.body;
+
+        if (
+            typeof title !== 'string' ||
+            !title.trim() ||
+            typeof message !== 'string' ||
+            !message.trim()
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: 'Title and message are required'
+            });
+        }
+
+        // Use only categories allowed by notificationModel.js.
+        const allowedCategories = [
+            'Hydration',
+            'Meals',
+            'Reminders',
+            'Sleep',
+            'General'
+        ];
+
+        const notificationCategory =
+            allowedCategories.includes(category)
+                ? category
+                : 'General';
+
+        const notification = await Notification.create({
+            userId,
+            category: notificationCategory,
+            title: title.trim(),
+            message: message.trim(),
+            isInteractive: isInteractive === true,
+            status: 'Unread'
+        });
+
+        console.log(
+            `>>> NOTIFICATION SAVED FOR USER ${userId} <<<`
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: 'Notification saved successfully',
+            notification
+        });
+
+    } catch (err) {
+        console.error(
+            'Save notification error:',
+            err.message
+        );
+
+        return res.status(500).json({
+            success: false,
+            error: 'Failed to save notification'
+        });
+    }
+});
+
+// ============================================================
+// 2. FETCH NOTIFICATIONS FOR LOGGED-IN USER
 // ============================================================
 
 router.get('/', verifyToken, async (req, res) => {
@@ -57,7 +141,7 @@ router.get('/', verifyToken, async (req, res) => {
 });
 
 // ============================================================
-// 2. HANDLE NOTIFICATION RESPONSES
+// 3. HANDLE NOTIFICATION RESPONSES
 // ============================================================
 
 router.patch('/:id/respond', verifyToken, async (req, res) => {
@@ -394,7 +478,7 @@ router.patch('/:id/respond', verifyToken, async (req, res) => {
 });
 
 // ============================================================
-// 3. DELETE NOTIFICATION
+// 4. DELETE NOTIFICATION
 // ============================================================
 
 router.delete('/:id', verifyToken, async (req, res) => {
