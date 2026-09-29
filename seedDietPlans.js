@@ -9,8 +9,7 @@ const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
 // Add your 61 age documents inside this array
 const dietPlansData = [
   {
-  // Age 16 | underweight | plan1
-  {
+  // Age 16 | underweight | plans
     age: 16, category: "underweight", plan: "plan1",
     days: [
       { day: "Monday", breakfast: "Carrot Muthia", lunch: "Lobia Curry with Rice", snack: "White Peas Sundal", dinner: "Yam Pepper Curry with Roti" },
