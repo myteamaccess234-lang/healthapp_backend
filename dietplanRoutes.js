@@ -38,9 +38,19 @@ router.get('/', async (req, res) => {
         // Normalize category
         // --------------------------------------------------------
 
-        category = String(category || '')
-            .trim()
-            .toLowerCase();
+        let rawCategory = String(category || '').trim().toLowerCase();
+        
+        if (rawCategory.includes('underweight')) {
+            category = 'underweight';
+        } else if (rawCategory.includes('normal') || rawCategory.includes('maintenance')) {
+            category = 'normal';
+        } else if (rawCategory.includes('overweight')) {
+            category = 'overweight';
+        } else if (rawCategory.includes('obese')) {
+            category = 'obese';
+        } else {
+            category = rawCategory;
+        }
 
         const validCategories = [
             'underweight',
